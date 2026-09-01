@@ -29,8 +29,8 @@ Com base no diagrama elétrico do projeto:
 2. Abra o arquivo `.ino` na IDE Arduino.
 3. No código, localize as seguintes linhas e insira as credenciais da sua rede Wi-Fi:
    ```cpp
-   const char* ssid = "NOME_DA_SUA_REDE_WIFI";
-   const char* password = "SENHA_DA_SUA_REDE_WIFI";
+   const char* ssid = "Rede_wifi";
+   const char* password = "Senha_rede_wifi";
 4. Conecte o ESP32-C3 ao computador. Selecione a placa correta e a porta COM na IDE.
 5. Faça o upload do código para a placa.
 6. Abra o Monitor Serial (configurado para a velocidade 115200 baud).
