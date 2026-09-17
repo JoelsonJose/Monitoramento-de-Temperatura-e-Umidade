@@ -1,13 +1,10 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "DHT.h"
+#include "credentials.h" // Importa as credenciais de forma segura
 
-// Insira as credenciais da sua rede Wi-Fi
-const char* ssid = "Rede_wifi";
-const char* password = "Senha_rede_wifi";
-
-// Configuração do DHT22 baseado na imagem fornecida
-#define DHTPIN 5       // Pino GPIO 6 conectado ao fio verde
+// Configuração do DHT22 
+#define DHTPIN 5       // Pino GPIO 5 conectado ao fio verde do sensor
 #define DHTTYPE DHT22  // Modelo do sensor
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -41,8 +38,8 @@ void setup() {
   Serial.begin(115200);
   dht.begin();
 
-  // Inicia conexão Wi-Fi
-  WiFi.begin(ssid, password);
+  // Inicia conexão Wi-Fi usando as variáveis do credentials.h
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Conectando ao Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
