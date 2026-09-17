@@ -8,7 +8,7 @@ Protótipo de IoT (Nó Sensor Edge) desenvolvido para a telemetria inicial de te
 ## 📸 Registro Fotográfico do Artefato (Upcycling)
 O gabinete (enclosure) foi construído aplicando princípios de Design Circular / Maker (Upcycling), utilizando embalagens reaproveitadas para acomodar a eletrônica e garantir a troca de ar convectiva.
 
-![Protótipo do Nó Sensor](Artefato.jpeg)
+![Protótipo do Nó Sensor](imagens/Artefato.jpeg)
 
 ## 🛠️ Componentes Utilizados
 * Placa de desenvolvimento ESP32-C3
