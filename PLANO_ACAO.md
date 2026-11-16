@@ -20,16 +20,32 @@ As responsabilidades foram distribuídas para esta prévia. Tarefas ainda não c
 
 Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
 
+### Lacunas obrigatórias da prévia (16/11)
+
+| Lacuna para a prévia | Responsável | O que falta / evidência a obter | Estado |
+|---|---|---|---|
+| Segundo sensor físico | Joelson / equipe | A orientação pede pelo menos dois sensores. O protótipo disponível tem um DHT11; explicar a limitação e obter aceite explícito do professor | Exceção não confirmada |
+| API pública HTTPS e ingestão da placa | Lucas Ximenes / Homero / Joelson | Publicar API em nuvem com TLS e verificar leitura física real chegando por URL pública | Só rede local HTTP comprovada |
+| ThingSpeak | Joelson | Criar canal real, respeitar intervalo mínimo de 15 s e verificar resposta HTTP | Não implementado |
+| App mobile e protótipo navegável | Morgana / Lucas Ximenes | Prototipar no Figma e demonstrar app/PWA com login e lista de leituras reais. Dashboard web local não substitui este item | Não implementado |
+| Pesquisa, persona, jornada e proposta de valor | Morgana | Evidenciar pelo menos 5 entrevistas ou 20 respostas e derivar os artefatos | Sem evidência |
+| Problema de IA e baseline | Morgana | Definir tarefa e calcular baseline simples | Sem evidência |
+| Segurança 401/403 | Nicollas / Lucas Ximenes | Manter evidência de 401 e implementar/testar 403 por autorização de objeto | JWT/401 presentes; 403 ausente |
+| Testes de rotas no CI | Nicollas / Joelson | Adicionar testes automatizados HTTP das rotas principais; os três testes atuais são unitários de token/payload | CI roda testes unitários; testes de rota ausentes |
+| Modelo ER e dados de exemplo | Homero | Criar tabelas de dispositivo, leitura e usuário, diagrama ER e seed com dados identificados | Apenas tabela readings |
+| Diagrama de arquitetura completo e último contato | Lucas Ximenes / Homero | Mostrar caminho pretendido em nuvem, apps, protocolos/portas e distinguir o que já funciona; adicionar heartbeat/último contato | Parcial/local; sem heartbeat |
+| Tag da prévia | Lucas Ximenes | Criar a tag `v0.9-previa` no commit a ser entregue | Não criada |
+| Medição de F1 | Nicollas / Joelson | Cronometrar a recuperação da rede para conferir o limite de 30 s da tabela de F1 | Queda/recuperação funcionais; tempo não medido |
+
+### Pendências da entrega final (30/11)
+
 | Gap | UC / criterion | Concrete action | Owner | Due | Completion evidence | Status |
 |---|---|---|---|---|---|---|
-| Preview uses the one available physical sensor | IoT | Present the DHT11-only prototype and explain the available hardware during the demonstration | Team representative | 16/11/2026 | DHT11 readings and local page demonstrated | Planned |
-| Public API and duplicate/replay behavior remain unverified | Cloud / Quality | Deploy behind HTTPS, then test duplicate sequence handling and replay after an outage | Lucas Ximenes / Homero / Nicollas | Before final | Public TLS endpoint, duplicate response, and recovery evidence | Partial: local authenticated ESP32-to-PostgreSQL ingestion works |
-| No public HTTPS deployment | Cloud / Security | Choose provider/domain, configure secrets, TLS and public URLs | Lucas Ximenes / Nicollas | Before final | Public API URL and TLS check | Open |
-| ThingSpeak integration is not implemented | IoT / Cloud | Add a ThingSpeak channel and verify a live reading | Joelson / Lucas Ximenes | Before final | One physical event visible in ThingSpeak | Open |
-| F1/F3 timing metrics not measured; functional tests passed | IoT / Quality | Preserve functional results; repeat with stopwatch if the instructor requires exact outage or recovery latency; continue F1-F6 test plan for final | Nicollas / Joelson | Per course schedule | Timed test report, if required | Partial |
-| Model and evidence dataset absent | AI | Collect at least 48 hours of readings, define a task, compare temporal baseline and model | Morgana | Before final | Notebook, metrics and model card | Open |
-| Mobile client and user evaluation absent | UE Mobile | Build PWA/mobile client, test with five users and calculate SUS | Morgana | Before final | Build link and SUS report | Open |
-| User research absent | Consumer Behaviour | Conduct at least five interviews or collect 20 responses; derive persona and journey | Morgana | Before final | Anonymized findings and artifacts | Open |
-| Security gaps remain | Security | Add object authorization, TLS, rate limiting, ZAP and dependency scan | Nicollas / Lucas Ximenes | Before final | Automated results and updated threat model | Open |
-| Documentation and pitch are incomplete | Tech English | Complete English README, API spec and up to six English slides | Thayanne / João César / Morgana | Before review | Repository files and slide link | Open |
-| Final evidence/backup/cost absent | Cloud / Quality | Configure deployment, logs, managed backup/restore and cost estimate | Lucas Ximenes / Nicollas | Before final | Deploy/restore/cost evidence | Open |
+| Buffer, watchdog and full resilience test set | IoT / Cloud / Quality | Add ordered offline buffer, watchdog/power recovery, degraded status; run F1–F6 and record loss/recovery | Joelson / Lucas Ximenes / Nicollas | 30/11/2026 | R1–R8 evidence; loss ≤1% over 24 h; device availability and recovery times | Open |
+| Cloud operations and database recovery | Cloud / Database | Configure deploy pipeline, centralized logs, restart, managed backup/restore and cost estimate | Lucas Ximenes / Homero | 30/11/2026 | Public deployment, restore proof and monthly cost | Open |
+| Advanced security controls | Security | Add object authorization, TLS across the path, rate limits, ZAP, dependency checks and LGPD lifecycle | Nicollas / Lucas Ximenes | 30/11/2026 | Automated security evidence and updated threat model | Open |
+| Quality metrics | Quality | Add route tests, ≥60% backend coverage, static analysis, reviewed PRs and ISO/IEC 25010 report | Nicollas | 30/11/2026 | CI coverage and quality report | Open |
+| AI model | AI | Collect ≥48 h, clean data, use temporal split, outperform baseline, deploy `/predict` and write model card | Morgana | 30/11/2026 | Notebook, metrics, endpoint and model card | Open |
+| Mobile completion and user evaluation | UE Mobile | Add alerts/offline state, heuristic review and test with five users; calculate SUS ≥68 | Morgana / Lucas Ximenes | 30/11/2026 | Mobile build and SUS report | Open |
+| Final research validation | Consumer Behaviour | Validate persona/value proposition and relate dashboard indicators to user decisions | Morgana | 30/11/2026 | Anonymized findings and validation evidence | Open |
+| Final documentation and release | All | Complete English manual, final architecture/evidence, ≤5 min video and tag `v1.0` | Thayanne / João César / Morgana | 30/11/2026 | Reproducible README, video and release tag | Open |
