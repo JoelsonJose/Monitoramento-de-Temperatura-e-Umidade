@@ -1,6 +1,6 @@
 # API reference
 
-The API is versioned under `/api/v1`. Local development listens on port 3000. The root `render.yaml` prepares the Render web service and managed PostgreSQL; the service still needs to be deployed and its public URL verified.
+The API is versioned under `/api/v1`. Local development listens on port 3000. The Render service is deployed at `https://monitoramento-iot-api.onrender.com`, with a managed PostgreSQL database. On 16/11/2026, the public `/health` endpoint returned `{"status":"ok","database":"connected"}`. The Render environment still needs `DEVICE_API_KEY`, `DEMO_USER`, and `DEMO_PASSWORD` before protected public workflows can be demonstrated.
 
 | Method | Path | Authentication | Purpose |
 |---|---|---|---|
@@ -24,7 +24,7 @@ Ingestion JSON:
 }
 ```
 
-Duplicate `(device_id, sequence)` pairs are idempotent. Payloads outside temperature `-40..80 °C` or humidity `0..100%` return `400`. Missing or invalid authentication returns `401`. Device-level access is stored in `device_access`; a valid JWT without access receives `403`. Route behavior is covered by automated HTTP tests in `backend/src/server.test.js` and runs in GitHub Actions. Render TLS and public service reachability still require deployment verification.
+Duplicate `(device_id, sequence)` pairs are idempotent. Payloads outside temperature `-40..80 °C` or humidity `0..100%` return `400`. Missing or invalid authentication returns `401`. Device-level access is stored in `device_access`; a valid JWT without access receives `403`. Route behavior is covered by automated HTTP tests in `backend/src/server.test.js`; five GitHub Actions runs have passed. Public HTTPS health and database connectivity are verified. Public login, authorized 403 behavior, and device ingestion remain pending the missing Render environment variables and hardware configuration.
 
 On API startup, `backend/src/migrate.js` creates or upgrades `devices`, `users`, `device_access`, and `readings`, backfills existing devices, and seeds the configured demo account/device. Ingest updates `devices.last_seen_at`; the dashboard displays this heartbeat value.
 

@@ -5,11 +5,11 @@
 const char* WIFI_SSID = "Sua_Rede_2_4_GHz";
 const char* WIFI_PASS = "Sua_Senha_WiFi";
 
-// Optional cloud ingestion. Keep blank until a public HTTPS API is deployed.
-#define API_URL "" // Example: https://host.example/api/v1/ingest
+// Public Render API. Keep the matching device key and trusted CA in your local copy only.
+#define API_URL "https://monitoramento-iot-api.onrender.com/api/v1/ingest"
 #define DEVICE_ID "esp32c3-01"
 #define DEVICE_API_KEY ""
-// Paste the trusted root/intermediate CA certificate for the API host as PEM.
+// Paste the trusted root/intermediate CA certificate for the API host as PEM before enabling HTTPS.
 #define API_ROOT_CA ""
 
 #endif

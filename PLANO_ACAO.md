@@ -24,7 +24,7 @@ Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
 
 | Lacuna para a prévia | Responsável | O que falta / evidência a obter | Estado |
 |---|---|---|---|
-| API pública HTTPS e ingestão da placa | Lucas Ximenes / Homero / Joelson | Criar o Blueprint no Render, configurar segredos, receber a URL pública, atualizar credenciais locais da ESP32 com endpoint e certificado CA, e confirmar leitura física | Blueprint preparado; serviço público e envio HTTPS da placa aguardam deploy/verificação |
+| API pública HTTPS e ingestão da placa | Lucas Ximenes / Homero / Joelson | Configurar segredos ausentes no Render, atualizar credenciais locais da ESP32 com endpoint e certificado CA, reflashear e confirmar leitura física | API publicada em `https://monitoramento-iot-api.onrender.com`; `/health` confirmou banco conectado. `DEVICE_API_KEY`, `DEMO_USER` e `DEMO_PASSWORD` ainda ausentes; envio HTTPS da placa pendente |
 | ThingSpeak | Joelson / Lucas Ximenes | Criar canal com Field 1 = temperatura e Field 2 = umidade; manter Write API Key fora do Git; observar resposta HTTPS e entry ID | Duas respostas HTTP 200 com IDs 1 e 2 foram observadas anteriormente; após a última recriação local da API surgiram respostas 400 e a integração precisa de nova confirmação |
 | App mobile e protótipo navegável | Morgana / Lucas Ximenes | Prototipar no Figma e demonstrar app/PWA com login e lista de leituras reais. Dashboard web local não substitui este item | Não implementado |
 | Pesquisa, persona, jornada e proposta de valor | Morgana | Aplicar o roteiro `docs/ux/pesquisa_previa.md` a pelo menos 5 usuários reais e derivar os artefatos | Roteiro pronto; respostas reais pendentes |
@@ -32,7 +32,7 @@ Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
 | Segurança 401/403 | Nicollas / Lucas Ximenes | Demonstrar JWT sem autorização para um dispositivo | Implementado; validação local retornou 401 sem token e 403 para dispositivo sem permissão |
 | Testes de rotas no CI | Nicollas / Joelson | Manter testes HTTP das rotas principais no GitHub Actions | Implementados; 5 testes passaram localmente. Execução GitHub Actions após push pendente |
 | Modelo ER e dados de exemplo | Homero | Manter tabelas device, user, device access e readings, diagrama ER e seed | Implementados na migração; testados com PostgreSQL local; ver `docs/diagrama_er.md` |
-| Diagrama de arquitetura completo e último contato | Lucas Ximenes / Homero | Documentar caminho local e público, protocolos/portas, e mostrar heartbeat | Diagrama e `last_seen_at` implementados; dashboard e health local verificados; Render pendente |
+| Diagrama de arquitetura completo e último contato | Lucas Ximenes / Homero | Documentar caminho local e público, protocolos/portas, e mostrar heartbeat | Diagrama e `last_seen_at` implementados; Render público e banco respondem no health check; heartbeat público aguarda configuração e envio da ESP32 |
 | Tag da prévia | Lucas Ximenes | Criar a tag `v0.9-previa` no commit a ser entregue | Criada e publicada no GitHub em `8798c9e` |
 | F1 | Nicollas / Joelson | Registrar a evidência da demonstração | Concluído funcionalmente conforme confirmação do usuário; queda e reconexão observadas |
 
