@@ -24,6 +24,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       DEMO_USER: ${DEMO_USER:?Set DEMO_USER in .env}
       DEMO_PASSWORD: ${DEMO_PASSWORD:?Set DEMO_PASSWORD in .env}
+      DEMO_DEVICE_ID: ${DEMO_DEVICE_ID:-esp32c3-01}
     depends_on:
       database:
         condition: service_healthy

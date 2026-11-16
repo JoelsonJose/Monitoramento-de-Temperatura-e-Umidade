@@ -1,6 +1,6 @@
 # ESP32 Microclimate Monitoring
 
-This project reads temperature and humidity from one DHT11 sensor connected to an ESP32-C3. The firmware samples every five seconds, reports valid readings over Serial, serves a local status page, and sends authenticated readings to a local Node.js API and PostgreSQL database. Public HTTPS deployment is still pending.
+This project reads temperature and humidity from one DHT11 sensor connected to an ESP32-C3. The firmware samples every five seconds, reports valid readings over Serial, serves a local status page, and sends authenticated readings to a Node.js API and PostgreSQL database. The `render.yaml` Blueprint prepares a public HTTPS deployment; the Render service still needs to be created and verified.
 
 ## Team
 
@@ -33,11 +33,15 @@ The firmware logs Wi-Fi start, association, IP assignment, and disconnect reason
 
 ## API and dashboard
 
-The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. This is a browser dashboard, separate from the ESP32's status page at `http://<ESP32_IP>/`.
+The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. This is a browser dashboard, separate from the ESP32's status page at `http://<ESP32_IP>/`. It now displays the latest device contact time.
 
-To enable ThingSpeak, create a channel with field 1 for temperature (°C) and field 2 for humidity (%), then set the channel Write API Key in the ignored local `.env` as `THINGSPEAK_WRITE_API_KEY`. The API forwards physical readings over HTTPS at most once per 16 seconds and logs the HTTP result and entry ID without logging the key. Leave it blank to disable forwarding. Live writes were verified on 16/11/2026 with HTTP 200 and entry IDs 1 and 2, 20 seconds apart. The free ThingSpeak rate is 15 seconds per channel.
+## Render deployment
 
-During the local integration check, both Compose services were healthy; `/health` returned `ok` with the database connected, the dashboard and demo login returned HTTP 200, and the protected route returned HTTP 401 without a token. The uploaded ESP32-C3 then sent physical DHT11 readings with device ID, sequence, and UTC timestamp; the records were confirmed in PostgreSQL. The preview API runs over HTTP on the private LAN; deploy it behind HTTPS before public exposure.
+The root `render.yaml` defines a Node web service, managed PostgreSQL, HTTPS health check, and secret environment variables. Connect this repository to Render and create the Blueprint. Render prompts for `DEVICE_API_KEY`, `DEMO_USER`, `DEMO_PASSWORD`, and `THINGSPEAK_WRITE_API_KEY`; do not commit those values. The service is not considered deployed until Render provides a URL and `/health` plus physical device ingestion are verified. Configure the ESP32's ignored `credentials.h` with that URL, the device key, and trusted root CA before testing board-to-cloud HTTPS. The free database is only suitable for a short preview and expires after 30 days; preserve/export any evidence you need.
+
+To enable ThingSpeak, create a channel with field 1 for temperature (°C) and field 2 for humidity (%), then set the channel Write API Key in the ignored local `.env` as `THINGSPEAK_WRITE_API_KEY`. The API forwards physical readings over HTTPS at most once per 16 seconds and logs the HTTP result and entry ID without logging the key. Leave it blank to disable forwarding. Two live writes returned HTTP 200 with entry IDs 1 and 2, 20 seconds apart on 16/11/2026. After a later local API restart, new attempts returned HTTP 400 and need re-verification. The free ThingSpeak rate is 15 seconds per channel.
+
+During the local integration check, both Compose services were healthy; `/health` returned `ok` with the database connected, the dashboard and demo login returned HTTP 200, the protected route returned HTTP 401 without a token, and an unauthorized device returned HTTP 403. The uploaded ESP32-C3 sent physical DHT11 readings with device ID, sequence, and UTC timestamp; the records were confirmed in PostgreSQL. Five route/unit tests pass locally; the GitHub Actions workflow is configured, but its run for the latest commit has not yet been verified. Public Render deployment and end-to-end device ingestion over HTTPS remain unverified.
 
 Before exposing the API publicly, put it behind an HTTPS reverse proxy or a cloud provider's TLS ingress. Do not expose PostgreSQL to the public Internet. Firmware supports HTTPS when configured with a trusted PEM certificate as `API_ROOT_CA`; the current local preview uses the private-LAN endpoint and a device key. Do not commit credentials. Public cloud delivery has not yet been verified on hardware.
 
@@ -51,6 +55,8 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 - `database/init.sql` — PostgreSQL schema
 - `docs/` — architecture, API, and security notes
 - `docs/diagrama_eletrico.svg` — ESP32-C3 and DHT11 wiring
+- `docs/diagrama_er.md` — database entities and relationships
+- `render.yaml` — Render web service and PostgreSQL Blueprint
 - `docs/lista_componentes.md` — bill of materials and known quantities
 - `docs/plano_testes.md` — preview test cases and evidence
 - `docs/ia/baseline_previa.md` — preview forecasting problem and measured persistence baseline
@@ -61,4 +67,4 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 
 ## Current limitations
 
-The present preview hardware uses one DHT11 module; the team will explain the available hardware during the demonstration. The course guide asks for two physical sensors, so the one-sensor setup is an exception awaiting instructor approval. The sensor and reused enclosure are not calibrated or certified for industrial cold rooms. Public cloud hosting, mobile app, final AI model, primary user study, duplicate/replay testing, and full security controls remain open work. ThingSpeak forwarding is enabled and two live writes returned HTTP 200 with entry IDs 1 and 2. See the action plan and evidence matrix for current statuses.
+The preview hardware uses the team's selected single DHT11 sensor. The sensor and reused enclosure are not calibrated or certified for industrial cold rooms. Public cloud deployment is prepared but not yet verified; mobile app, final AI model, primary user study, duplicate/replay testing, and advanced security controls remain separate work. ThingSpeak returned HTTP 200 with entry IDs 1 and 2 in earlier tests; later attempts after a local API restart returned HTTP 400 and need re-verification. See the action plan and evidence matrix for current statuses.

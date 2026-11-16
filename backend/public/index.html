@@ -24,7 +24,7 @@
     <article class="card"><h2>Temperature</h2><p class="metric" id="temperature">—</p></article>
     <article class="card"><h2>Humidity</h2><p class="metric" id="humidity">—</p></article>
   </section>
-  <section class="card"><h2>Latest record</h2><p id="details">Sign in to load data.</p></section>
+  <section class="card"><h2>Latest record</h2><p id="details">Sign in to load data.</p><p id="last-contact">Last device contact: —</p></section>
 </main>
 <script>
   let token='';
@@ -51,6 +51,7 @@
     document.querySelector('#temperature').textContent=`${Number(r.temperature_c).toFixed(1)} °C`;
     document.querySelector('#humidity').textContent=`${Number(r.humidity_percent).toFixed(1)} %`;
     document.querySelector('#details').textContent=`Device ${r.device_id}, sequence ${r.sequence}, ${new Date(r.timestamp).toLocaleString()}`;
+    document.querySelector('#last-contact').textContent=`Last device contact: ${r.last_seen_at ? new Date(r.last_seen_at).toLocaleString() : 'not reported'}`;
     status.textContent='Connected'; status.className='';
   }
 </script>

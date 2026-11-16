@@ -2,10 +2,14 @@ openapi: 3.1.0
 info:
   title: ESP32 Microclimate Monitoring API
   version: 0.1.0
-  description: API for DHT11 readings, local demonstration only until public HTTPS deployment is configured.
+  description: API for DHT11 readings. The Render Blueprint is prepared; public deployment remains pending until the service is created and verified.
 servers:
   - url: http://localhost:3000
     description: Local development. Do not use over an untrusted network.
+  - url: https://{service}.onrender.com
+    description: Render HTTPS after deployment; replace service with the assigned hostname.
+    variables:
+      service: { default: monitoramento-iot-api }
 paths:
   /health:
     get:
@@ -52,6 +56,32 @@ paths:
       responses:
         '200': { description: Latest reading, or null if no data exists }
         '401': { description: Missing, invalid, or expired JWT }
+  /api/v1/devices/{device_id}:
+    get:
+      summary: Read device status and last contact when authorized
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Device status including last_seen_at }
+        '401': { description: Missing, invalid, or expired JWT }
+        '403': { description: User has no permission for this device }
+  /api/v1/devices/{device_id}/readings:
+    get:
+      summary: Read up to 100 measurements for an authorized device
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Device status and readings }
+        '401': { description: Missing, invalid, or expired JWT }
+        '403': { description: User has no permission for this device }
   /api/v1/readings:
     get:
       summary: Read measurement history
