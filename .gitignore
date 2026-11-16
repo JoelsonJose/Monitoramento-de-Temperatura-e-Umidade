@@ -1,0 +1,6 @@
+# Credenciais reais ficam apenas no computador local.
+credentials.h
+/monitoramento/
+.env
+backend/node_modules/
+/monitoramento/

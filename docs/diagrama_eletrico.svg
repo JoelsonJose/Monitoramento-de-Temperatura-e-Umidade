@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Ligação do DHT11 à ESP32-C3</title>
+  <desc id="desc">O VCC do DHT11 vai ao 3V3, DATA ao GPIO 5 e GND ao GND. Um resistor pull-up é opcional para sensores sem módulo integrado.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#263b50"/></marker>
+    <style>
+      text{font-family:Arial,sans-serif;fill:#172b3d}.title{font-size:28px;font-weight:bold}.label{font-size:20px}.small{font-size:16px}.box{fill:#f2f6f9;stroke:#17324d;stroke-width:3}.wire{fill:none;stroke:#263b50;stroke-width:5;marker-end:url(#arrow)}.power{stroke:#c43d3d}.data{stroke:#2570a5}.ground{stroke:#222}.optional{stroke:#6a7d8d;stroke-dasharray:10 8;fill:none;stroke-width:3}
+    </style>
+  </defs>
+  <rect width="1100" height="620" fill="#ffffff"/>
+  <text x="55" y="58" class="title">Esquema elétrico — ESP32-C3 + DHT11</text>
+  <rect x="70" y="125" width="350" height="310" rx="16" class="box"/>
+  <text x="120" y="175" class="label" font-weight="bold">ESP32-C3</text>
+  <text x="115" y="245" class="label">3V3</text>
+  <text x="115" y="325" class="label">GPIO 5</text>
+  <text x="115" y="405" class="label">GND</text>
+  <circle cx="355" cy="238" r="9" fill="#c43d3d"/><circle cx="355" cy="318" r="9" fill="#2570a5"/><circle cx="355" cy="398" r="9" fill="#222"/>
+  <rect x="690" y="170" width="320" height="220" rx="16" class="box"/>
+  <text x="765" y="218" class="label" font-weight="bold">DHT11</text>
+  <text x="730" y="275" class="label">VCC</text>
+  <text x="730" y="325" class="label">DATA</text>
+  <text x="730" y="375" class="label">GND</text>
+  <circle cx="970" cy="268" r="9" fill="#c43d3d"/><circle cx="970" cy="318" r="9" fill="#2570a5"/><circle cx="970" cy="368" r="9" fill="#222"/>
+  <path d="M355 238 C470 238 560 268 690 268" class="wire power"/>
+  <path d="M355 318 C480 318 560 318 690 318" class="wire data"/>
+  <path d="M355 398 C490 398 560 368 690 368" class="wire ground"/>
+  <text x="460" y="225" class="small" fill="#c43d3d">3V3</text><text x="480" y="304" class="small" fill="#2570a5">DATA</text><text x="468" y="393" class="small">GND</text>
+  <path d="M830 315 L830 472 L540 472 L540 240" class="optional"/>
+  <rect x="500" y="455" width="80" height="36" rx="6" fill="#fff" stroke="#6a7d8d" stroke-width="2"/>
+  <text x="508" y="479" class="small">4,7–10 kΩ</text>
+  <text x="70" y="535" class="small">Pull-up entre DATA e 3V3 somente se o sensor for nu e não possuir resistor integrado.</text>
+  <text x="70" y="568" class="small">Confira as inscrições do módulo: a ordem dos pinos varia entre modelos DHT11.</text>
+</svg>

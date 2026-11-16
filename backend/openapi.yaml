@@ -1,0 +1,89 @@
+openapi: 3.1.0
+info:
+  title: ESP32 Microclimate Monitoring API
+  version: 0.1.0
+  description: API for DHT11 readings, local demonstration only until public HTTPS deployment is configured.
+servers:
+  - url: http://localhost:3000
+    description: Local development. Do not use over an untrusted network.
+paths:
+  /health:
+    get:
+      summary: Check API and database health
+      responses:
+        '200': { description: Service and database are available }
+        '500': { description: Database is unavailable }
+  /api/v1/auth/token:
+    post:
+      summary: Issue a one-hour bearer token for the configured demo account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, format: password }
+      responses:
+        '200': { description: JWT issued }
+        '401': { description: Credentials are invalid }
+        '503': { description: Demo authentication is not configured }
+  /api/v1/ingest:
+    post:
+      summary: Store one sensor reading idempotently
+      security: [{ DeviceKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadingInput'
+      responses:
+        '201': { description: New reading stored }
+        '200': { description: Duplicate sequence safely ignored }
+        '400': { description: Invalid payload or value range }
+        '401': { description: Device key is invalid }
+  /api/v1/readings/latest:
+    get:
+      summary: Read the latest stored measurement
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: Latest reading, or null if no data exists }
+        '401': { description: Missing, invalid, or expired JWT }
+  /api/v1/readings:
+    get:
+      summary: Read measurement history
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: before
+          schema: { type: string, format: date-time }
+      responses:
+        '200': { description: Readings ordered newest first }
+        '401': { description: Missing, invalid, or expired JWT }
+components:
+  securitySchemes:
+    DeviceKey:
+      type: apiKey
+      in: header
+      name: X-Device-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ReadingInput:
+      type: object
+      additionalProperties: false
+      required: [device_id, sequence, timestamp, temperature_c, humidity_percent]
+      properties:
+        device_id: { type: string, maxLength: 80 }
+        sequence: { type: integer, minimum: 0 }
+        timestamp: { type: string, format: date-time }
+        temperature_c: { type: number, minimum: -40, maximum: 80 }
+        humidity_percent: { type: number, minimum: 0, maximum: 100 }
