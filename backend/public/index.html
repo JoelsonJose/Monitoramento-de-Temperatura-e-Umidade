@@ -1,68 +1,390 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Monitoramento de Temperatura e Umidade</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f8f1">
+  <title>MangaSense · Monitoramento</title>
   <style>
-    body{font:16px system-ui,sans-serif;background:#f2f5f8;color:#183047;margin:0;padding:2rem}
-    main{max-width:760px;margin:auto}.card{background:white;padding:1.5rem;border-radius:14px;box-shadow:0 4px 20px #18304718}
-    label,input,button{display:block;margin:.5rem 0}input{padding:.7rem;max-width:100%;width:22rem}button{padding:.7rem 1rem}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.metric{font-size:2rem;font-weight:700}
-    #status{color:#586c7b}.error{color:#a12622}@media(max-width:560px){.grid{grid-template-columns:1fr}body{padding:1rem}}
+    :root{
+      color-scheme:light;
+      --ink:#16352e;--muted:#74847b;--paper:#f6f8f1;--white:#fff;
+      --green:#236c4a;--green-dark:#194e38;--green-soft:#e7f1e9;
+      --mango:#f2a51a;--mango-pale:#fff2d2;--line:#e8ece4;
+      --red:#b33d35;--red-pale:#fff0ed;--shadow:0 18px 50px #183c2c12;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--paper);color:var(--ink)}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+    .brand{display:flex;align-items:center;gap:11px;color:var(--ink);font-weight:800;letter-spacing:-.04em}
+    .brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:#e7f1e9;color:var(--green)}
+    .brand-mark svg{width:25px;height:25px}
+    .brand-name{font-size:19px}
+    .brand-name span{color:var(--green)}
+
+    /* Login */
+    .login-view{min-height:100vh;padding:28px clamp(20px,5vw,76px);display:flex;flex-direction:column}
+    .login-top{width:min(1180px,100%);margin:0 auto}
+    .login-main{width:min(1180px,100%);margin:auto;display:grid;grid-template-columns:1.08fr .92fr;align-items:center;gap:clamp(36px,7vw,96px);padding:54px 0 72px}
+    .intro{max-width:560px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;color:var(--green);font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+    .eyebrow:before{content:"";width:23px;height:2px;background:var(--mango);border-radius:5px}
+    h1,h2,h3,p{margin-top:0}
+    .intro h1{font-size:clamp(42px,5.3vw,70px);line-height:1.02;letter-spacing:-.065em;margin:20px 0 19px;max-width:570px}
+    .intro h1 span{color:var(--green)}
+    .intro-copy{color:#64766b;font-size:17px;line-height:1.7;max-width:445px;margin-bottom:8px}
+    .mango-art{width:min(100%,550px);margin:4px 0 -10px -8px}
+    .mango-art svg{width:100%;height:auto;display:block;overflow:visible}
+    .login-card{position:relative;background:var(--white);border:1px solid #edf0e8;border-radius:24px;padding:clamp(27px,4vw,43px);box-shadow:var(--shadow)}
+    .login-card:after{content:"";position:absolute;width:78px;height:7px;left:43px;top:-1px;border-radius:0 0 8px 8px;background:var(--mango)}
+    .login-card h2{font-size:29px;letter-spacing:-.045em;margin:8px 0}
+    .login-hint{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 27px}
+    .field{display:block;margin:0 0 17px}
+    .field span{display:block;font-size:13px;font-weight:700;margin-bottom:8px}
+    .field input{width:100%;height:50px;border:1px solid #dce4db;background:#fbfcf9;border-radius:11px;padding:0 14px;color:var(--ink);outline:none;transition:border .18s,box-shadow .18s}
+    .field input:focus{border-color:var(--green);box-shadow:0 0 0 4px #236c4a17;background:#fff}
+    .primary{width:100%;min-height:51px;border:0;border-radius:11px;background:var(--green);color:#fff;font-weight:750;box-shadow:0 8px 18px #236c4a22;transition:background .18s,transform .18s}
+    .primary:hover{background:var(--green-dark);transform:translateY(-1px)}
+    .primary:disabled{opacity:.7;cursor:wait;transform:none}
+    .login-status{min-height:23px;margin:13px 0 0;text-align:center;color:var(--muted);font-size:13px}
+    .error{color:var(--red)!important}
+    .login-foot{font-size:12px;line-height:1.5;color:#8a978e;text-align:center;margin:18px 0 0}
+
+    /* Dashboard */
+    .dashboard-view{min-height:100vh}
+    .topbar{height:78px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center}
+    .topbar-inner,.dashboard{width:min(1180px,calc(100% - 48px));margin:0 auto}
+    .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .top-actions{display:flex;align-items:center;gap:13px}
+    .connection-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #dcebe0;border-radius:99px;background:#f1f8f2;padding:8px 12px;color:var(--green);font-size:12px;font-weight:750}
+    .connection-dot{width:8px;height:8px;border-radius:50%;background:#36a86a;box-shadow:0 0 0 3px #36a86a22}
+    .connection-pill.offline{background:var(--red-pale);border-color:#f4d5d1;color:var(--red)}
+    .connection-pill.offline .connection-dot{background:var(--red);box-shadow:0 0 0 3px #b33d3522}
+    .text-button{border:0;background:transparent;color:#66776e;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:700}
+    .text-button:hover{background:#eef2eb;color:var(--ink)}
+    .dashboard{padding:42px 0 54px}
+    .welcome-row{display:flex;justify-content:space-between;align-items:flex-end;gap:25px;margin-bottom:27px}
+    .welcome-row h1{font-size:clamp(27px,3vw,37px);letter-spacing:-.055em;margin:9px 0 7px}
+    .welcome-row p{margin:0;color:var(--muted);font-size:14px}
+    .refresh-button{display:inline-flex;align-items:center;gap:9px;border:1px solid #dfe6dc;background:#fff;color:var(--ink);border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;box-shadow:0 4px 12px #183c2c08}
+    .refresh-button:hover{border-color:#bdd1c0;background:#fcfdfb}
+    .refresh-button svg{width:16px;height:16px;color:var(--green)}
+    .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px;margin-bottom:18px}
+    .metric-card{position:relative;overflow:hidden;background:#fff;border:1px solid #ebeee8;border-radius:17px;padding:21px 23px;min-height:158px;box-shadow:0 8px 26px #183c2c07}
+    .metric-card:after{content:"";position:absolute;width:110px;height:110px;border-radius:50%;right:-35px;top:-45px;background:var(--wash,#e9f3e9);opacity:.8}
+    .metric-head{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between}
+    .metric-title{font-size:13px;color:#687a70;font-weight:700}
+    .metric-icon{width:37px;height:37px;display:grid;place-items:center;border-radius:12px;background:var(--wash,#e9f3e9);color:var(--tone,var(--green));position:relative;z-index:1}
+    .metric-icon svg{width:20px;height:20px}
+    .metric-value{position:relative;z-index:1;font-size:clamp(32px,4vw,43px);font-weight:800;letter-spacing:-.06em;margin:18px 0 0;line-height:1}
+    .metric-unit{font-size:16px;letter-spacing:-.01em;color:#566a5f;font-weight:650;margin-left:4px}
+    .metric-caption{position:relative;z-index:1;color:#829087;font-size:11px;margin:10px 0 0}
+    .device-card{background:var(--green-dark);color:#fff;border-color:var(--green-dark);--wash:#ffffff18;--tone:#f6c75a}
+    .device-card .metric-title,.device-card .metric-caption{color:#c6d8cd}
+    .device-card .metric-value{font-size:24px;letter-spacing:-.035em;margin-top:20px}
+    .device-card .metric-unit{font-size:13px;color:#d5e4da}
+    .content-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(250px,.75fr);gap:18px}
+    .panel{background:#fff;border:1px solid #ebeee8;border-radius:17px;box-shadow:0 8px 26px #183c2c07}
+    .chart-panel{padding:22px 24px 17px;min-height:380px}
+    .panel-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+    .panel-heading h2{font-size:17px;letter-spacing:-.025em;margin:1px 0 5px}
+    .panel-subtitle{font-size:12px;color:#87938b;margin:0}
+    .range-label{font-size:11px;font-weight:750;color:#74847b;background:#f3f6f0;border-radius:7px;padding:7px 9px;white-space:nowrap}
+    .chart-tabs{display:flex;gap:5px;margin:19px 0 5px;padding:4px;width:max-content;background:#f3f6f1;border-radius:9px}
+    .chart-tab{border:0;background:transparent;color:#74847b;padding:7px 11px;border-radius:6px;font-size:12px;font-weight:700}
+    .chart-tab.active{background:#fff;color:var(--green);box-shadow:0 2px 6px #193a280d}
+    .chart-wrap{position:relative;width:100%;min-height:230px}
+    #history-chart{display:block;width:100%;height:250px;overflow:visible}
+    .chart-empty{position:absolute;inset:15px 0 30px;display:grid;place-content:center;text-align:center;color:#87938b;font-size:13px;line-height:1.6;padding:20px}
+    .chart-empty strong{color:#53675c;font-size:14px}
+    .record-panel{padding:22px;display:flex;flex-direction:column;min-height:380px}
+    .record-panel h2{font-size:17px;letter-spacing:-.025em;margin:2px 0 5px}
+    .record-panel .panel-subtitle{margin-bottom:22px}
+    .record-illustration{margin:auto 0 12px;display:grid;place-items:center;min-height:130px;background:linear-gradient(145deg,#f8faf5,#eef5e9);border-radius:13px}
+    .record-illustration svg{width:110px;height:110px}
+    .record-device{font-weight:750;font-size:14px;margin:0 0 6px;overflow-wrap:anywhere}
+    .record-meta{font-size:12px;line-height:1.65;color:#829087;margin:0}
+    .notice{margin-top:18px;padding:12px 14px;border:1px solid #f0dfb6;background:#fff9e9;color:#78633a;border-radius:11px;font-size:12px;line-height:1.5}
+    .notice.error{border-color:#f4d5d1;background:var(--red-pale);color:var(--red)}
+    .dashboard-footer{text-align:center;color:#98a39c;font-size:11px;padding:22px 0 0}
+    @media(max-width:800px){
+      .login-main{grid-template-columns:1fr;gap:28px;max-width:560px;padding:50px 0}
+      .intro{text-align:center;margin:auto}.intro h1,.intro-copy{margin-left:auto;margin-right:auto}.mango-art{max-width:430px;margin:10px auto -20px}
+      .login-card{order:-1}.login-card:after{left:32px}
+      .summary{grid-template-columns:repeat(2,minmax(0,1fr))}.device-card{grid-column:span 2;min-height:125px}
+      .content-grid{grid-template-columns:1fr}.record-panel{min-height:290px}.record-illustration{min-height:110px}
+    }
+    @media(max-width:540px){
+      .login-view{padding:20px}.login-main{padding:26px 0 38px}.login-card{padding:28px 22px}.intro h1{font-size:43px}.intro-copy{font-size:15px}
+      .topbar{height:67px}.topbar-inner,.dashboard{width:calc(100% - 32px)}.brand-name{font-size:17px}.brand-mark{width:37px;height:37px}
+      .connection-pill{font-size:0;padding:9px}.connection-dot{width:9px;height:9px}.top-actions{gap:4px}.text-button{padding:9px 7px;font-size:12px}
+      .dashboard{padding:28px 0 38px}.welcome-row{align-items:flex-start}.welcome-row h1{font-size:27px}.welcome-row p{font-size:12px;max-width:225px;line-height:1.5}.refresh-button{font-size:0;padding:11px}
+      .summary{gap:10px}.metric-card{padding:16px;min-height:140px;border-radius:14px}.metric-title{font-size:11px}.metric-icon{width:32px;height:32px}.metric-value{font-size:34px}.metric-unit{font-size:13px}.device-card .metric-value{font-size:21px}
+      .content-grid{gap:12px}.chart-panel,.record-panel{padding:17px;border-radius:14px}.chart-panel{min-height:345px}.panel-heading h2,.record-panel h2{font-size:15px}.range-label{font-size:10px;padding:6px}.chart-wrap{min-height:210px}#history-chart{height:220px}.record-panel{min-height:270px}
+    }
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
   </style>
 </head>
-<body><main>
-  <h1>Monitoramento de temperatura e umidade</h1>
-  <section class="card">
-    <p>Entre para consultar a leitura mais recente armazenada pela API do projeto.</p>
-    <form id="login"><label>Usuário<input name="username" autocomplete="username" required></label>
-      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
-      <button>Entrar</button></form>
-    <p id="status" role="status">Desconectado</p>
+<body>
+  <section class="login-view" id="login-view">
+    <header class="login-top"><div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M22.8 6.4c-8.7.2-14 4-14 11.4 0 4.8 3.2 8.1 7.8 8.1 6.6 0 10.2-7.1 6.2-19.5Z" fill="#F2A51A"/><path d="M17.1 9.1c.3-3.5 2.3-5.4 6.3-5.6-.6 3.2-2.6 5.1-6.3 5.6Z" fill="#39774A"/><path d="M12 21.8c2.1-5.4 5.8-9 10.2-11.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+      <span class="brand-name">Manga<span>Sense</span></span>
+    </div></header>
+    <main class="login-main">
+      <section class="intro">
+        <span class="eyebrow">Monitoramento IoT</span>
+        <h1>Um clima melhor para cada <span>manga.</span></h1>
+        <p class="intro-copy">Acompanhe temperatura e umidade do ambiente em tempo real, com dados enviados pela ESP32.</p>
+        <div class="mango-art" role="img" aria-label="Ilustração de uma manga e uma placa ESP32 conectada">
+          <svg viewBox="0 0 560 330" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="284" cy="292" rx="210" ry="18" fill="#DDE8D8"/>
+            <path d="M88 221c74-50 114-112 166-153 41-32 90-32 139-7" stroke="#5F8C58" stroke-width="9" stroke-linecap="round"/>
+            <path d="M204 111C168 61 109 53 76 79c18 47 65 66 128 49Z" fill="#6FA169"/>
+            <path d="M203 111c-42-20-79-28-114-27" stroke="#B6D0A6" stroke-width="3" stroke-linecap="round"/>
+            <path d="M338 72c32-47 84-58 123-35-11 45-50 68-113 58Z" fill="#4C8A56"/>
+            <path d="M349 88c35-24 68-37 103-45" stroke="#A9C998" stroke-width="3" stroke-linecap="round"/>
+            <path d="M292 78c-32-40-17-71 17-73 24 31 19 55-17 73Z" fill="#84AC70"/>
+            <path d="M303 71 305 18" stroke="#C9DBB8" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M287 123c22-54 89-68 122-24 27 36 12 106-25 151-28 33-79 38-111 8-33-31-16-94 14-135Z" fill="url(#fruit)"/>
+            <path d="M300 134c-17 31-25 70-12 94" stroke="#FFD76C" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+            <circle cx="366" cy="190" r="5" fill="#FFE29B" opacity=".8"/><circle cx="321" cy="226" r="3" fill="#FFE29B" opacity=".8"/>
+            <g transform="translate(85 190) rotate(-7 88 52)">
+              <rect x="0" y="0" width="178" height="104" rx="15" fill="#193D32"/>
+              <rect x="9" y="9" width="160" height="86" rx="10" stroke="#47775A" stroke-width="2"/>
+              <rect x="54" y="27" width="72" height="52" rx="7" fill="#277254"/>
+              <rect x="69" y="39" width="42" height="28" rx="4" fill="#182B28"/>
+              <path d="M80 51c6-7 14-7 20 0M84 56c4-4 8-4 12 0" stroke="#D8E9C9" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="90" cy="61" r="2" fill="#F2A51A"/>
+              <path d="M18 21h20M18 31h20M18 41h20M139 65h18M139 75h18" stroke="#9DB39A" stroke-width="3" stroke-linecap="round"/>
+              <path d="M20 0v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10m13 10v-10M20 104v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10m13-10v10" stroke="#B5A875" stroke-width="4" stroke-linecap="round"/>
+            </g>
+            <path d="M445 245c21-16 43-16 65 0M454 255c14-10 29-10 43 0M467 265c6-4 12-4 18 0" stroke="#6A9666" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="476" cy="275" r="3.5" fill="#F2A51A"/>
+            <defs><linearGradient id="fruit" x1="278" y1="91" x2="405" y2="266" gradientUnits="userSpaceOnUse"><stop stop-color="#FFC942"/><stop offset=".55" stop-color="#F2A51A"/><stop offset="1" stop-color="#E87927"/></linearGradient></defs>
+          </svg>
+        </div>
+      </section>
+      <section class="login-card" aria-labelledby="login-title">
+        <span class="eyebrow">Acesso ao painel</span>
+        <h2 id="login-title">Que bom ter você aqui.</h2>
+        <p class="login-hint">Entre com sua conta para ver as leituras mais recentes do dispositivo.</p>
+        <form id="login-form">
+          <label class="field"><span>Usuário</span><input name="username" autocomplete="username" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="primary" id="login-button" type="submit">Entrar no painel</button>
+        </form>
+        <p class="login-status" id="login-status" role="status" aria-live="polite">Acesso restrito à equipe do projeto.</p>
+        <p class="login-foot">MangaSense · Temperatura e umidade acompanhadas de perto.</p>
+      </section>
+    </main>
   </section>
-  <section class="grid" aria-live="polite">
-    <article class="card"><h2>Temperatura</h2><p class="metric" id="temperature">—</p></article>
-    <article class="card"><h2>Umidade</h2><p class="metric" id="humidity">—</p></article>
+
+  <section class="dashboard-view hidden" id="dashboard-view">
+    <header class="topbar"><div class="topbar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M22.8 6.4c-8.7.2-14 4-14 11.4 0 4.8 3.2 8.1 7.8 8.1 6.6 0 10.2-7.1 6.2-19.5Z" fill="#F2A51A"/><path d="M17.1 9.1c.3-3.5 2.3-5.4 6.3-5.6-.6 3.2-2.6 5.1-6.3 5.6Z" fill="#39774A"/><path d="M12 21.8c2.1-5.4 5.8-9 10.2-11.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="brand-name">Manga<span>Sense</span></span></div>
+      <div class="top-actions"><span class="connection-pill" id="connection-pill"><i class="connection-dot"></i><span id="connection-label">Conectado</span></span><button class="text-button" id="logout-button" type="button">Sair</button></div>
+    </div></header>
+    <main class="dashboard">
+      <div class="welcome-row">
+        <div><span class="eyebrow">Visão geral</span><h1>Painel de monitoramento</h1><p>Acompanhe as condições do ambiente monitorado.</p></div>
+        <button class="refresh-button" id="refresh-button" type="button" aria-label="Atualizar leituras"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 7v5h-5M4.5 11a7.5 7.5 0 0 1 13-4L20 12M4 17v-5h5m10.5 1a7.5 7.5 0 0 1-13 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Atualizar agora</button>
+      </div>
+      <section class="summary" aria-label="Leituras atuais">
+        <article class="metric-card" style="--wash:#fff2d2;--tone:#cf8a0d">
+          <div class="metric-head"><span class="metric-title">Temperatura</span><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 14.8V5a3 3 0 1 0-6 0v9.8a5 5 0 1 0 6 0Z" stroke="currentColor" stroke-width="1.8"/><path d="M11 8v9m0 0a2 2 0 1 0 2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
+          <p class="metric-value" id="temperature">—<span class="metric-unit">°C</span></p><p class="metric-caption">Leitura mais recente do DHT11</p>
+        </article>
+        <article class="metric-card" style="--wash:#e5f2f1;--tone:#398f88">
+          <div class="metric-head"><span class="metric-title">Umidade do ar</span><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5S5.5 11 5.5 15.1a6.5 6.5 0 1 0 13 0C18.5 11 12 3.5 12 3.5Z" stroke="currentColor" stroke-width="1.8"/><path d="M9 16.2a3 3 0 0 0 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></div>
+          <p class="metric-value" id="humidity">—<span class="metric-unit">%</span></p><p class="metric-caption">Nível de umidade relativa</p>
+        </article>
+        <article class="metric-card device-card">
+          <div class="metric-head"><span class="metric-title">Dispositivo</span><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 11h6M9 14h2m4 0h.01M9 17h.01m3 0h.01m3 0h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></div>
+          <p class="metric-value" id="device-status">Aguardando dados</p><p class="metric-caption" id="device-caption">ESP32-C3 · sensor DHT11</p>
+        </article>
+      </section>
+      <div class="content-grid">
+        <section class="panel chart-panel" aria-labelledby="chart-title">
+          <div class="panel-heading"><div><h2 id="chart-title">Histórico das leituras</h2><p class="panel-subtitle" id="chart-subtitle">Variação registrada pelo dispositivo</p></div><span class="range-label">Últimas 50 leituras</span></div>
+          <div class="chart-tabs" role="group" aria-label="Métrica do gráfico"><button class="chart-tab active" data-metric="temperature_c" type="button">Temperatura</button><button class="chart-tab" data-metric="humidity_percent" type="button">Umidade</button></div>
+          <div class="chart-wrap"><svg id="history-chart" viewBox="0 0 760 260" role="img" aria-label="Gráfico histórico de temperatura"></svg><div class="chart-empty" id="chart-empty"><div><strong>O gráfico aparecerá com as leituras</strong><br>Assim que a ESP32 enviar dados, você verá o histórico aqui.</div></div></div>
+        </section>
+        <aside class="panel record-panel" aria-labelledby="record-title">
+          <h2 id="record-title">Último registro</h2><p class="panel-subtitle">Informações recebidas da placa</p>
+          <div class="record-illustration" aria-hidden="true"><svg viewBox="0 0 120 120" fill="none"><circle cx="60" cy="60" r="49" fill="#E4EFDF"/><path d="M45 79c-13-15-10-39 2-53 15-5 31 4 33 22 3 22-15 43-35 31Z" fill="#F2A51A"/><path d="M59 31c0-10 8-16 18-15-2 9-8 14-18 15Z" fill="#51885A"/><path d="M30 88h60" stroke="#92AA86" stroke-width="3" stroke-linecap="round"/><rect x="73" y="65" width="27" height="24" rx="5" fill="#245940"/><rect x="80" y="71" width="13" height="11" rx="2" fill="#F3D779"/><path d="M79 62v-4m6 4v-4m6 4v-4m6 4v-4m-18 34v4m6-4v4m6-4v4m6-4v4" stroke="#8B9773" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <p class="record-device" id="record-device">Ainda sem leitura</p><p class="record-meta" id="record-meta">Aguardando o primeiro envio do dispositivo.</p>
+          <div class="notice hidden" id="dashboard-notice" role="status" aria-live="polite"></div>
+        </aside>
+      </div>
+      <footer class="dashboard-footer">MangaSense · Dados atualizados automaticamente a cada 10 segundos</footer>
+    </main>
   </section>
-  <section class="card"><h2>Último registro</h2><p id="details">Entre para carregar os dados.</p><p id="last-contact">Último contato do dispositivo: —</p></section>
-</main>
+
 <script>
   let token='';
   let refreshTimer=0;
-  const status=document.querySelector('#status');
-  document.querySelector('#login').addEventListener('submit',async event=>{
-    event.preventDefault(); status.textContent='Entrando…';
-    const data=Object.fromEntries(new FormData(event.currentTarget));
-    try{
-      const response=await fetch('/api/v1/auth/token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
-      const body=await response.json(); if(!response.ok) throw new Error(translateError(body.error)||'Falha ao entrar.');
-      token=body.access_token; await refresh();
-      if(refreshTimer) clearInterval(refreshTimer);
-      refreshTimer=setInterval(()=>refresh().catch(error=>{
-        status.textContent=error.message; status.className='error';
-      }),5000);
-    }catch(error){status.textContent=error.message;status.className='error';}
-  });
-  function translateError(message){
-    const messages={
-      'Invalid credentials':'Usuário ou senha inválidos.',
-      'User authentication is not configured':'O acesso de usuário não está configurado.',
-      'Bearer token required or expired':'Sessão expirada. Entre novamente.',
-      'Could not load readings':'Não foi possível carregar as leituras.',
-      'Device not found or access denied':'Dispositivo não encontrado ou acesso não autorizado.'
-    };
-    return messages[message]||message;
+  let readings=[];
+  let activeMetric='temperature_c';
+  const $=selector=>document.querySelector(selector);
+  const loginView=$('#login-view');
+  const dashboardView=$('#dashboard-view');
+  const loginStatus=$('#login-status');
+  const loginButton=$('#login-button');
+  const connectionPill=$('#connection-pill');
+  const notice=$('#dashboard-notice');
+
+  const messages={
+    'Invalid credentials':'Usuário ou senha inválidos.',
+    'User authentication is not configured':'O acesso de usuário não está configurado.',
+    'Bearer token required or expired':'Sua sessão expirou. Entre novamente.',
+    'Could not load readings':'Não foi possível carregar as leituras.',
+    'Device not found or access denied':'Dispositivo não encontrado ou sem autorização.',
+    'You do not have access to this device':'Você não tem acesso a este dispositivo.'
+  };
+  function friendlyError(message){return messages[message]||'Ocorreu um erro ao consultar o serviço. Tente novamente.';}
+  async function readJson(response){
+    let body={};
+    try{body=await response.json();}catch{}
+    if(!response.ok){
+      const error=new Error(friendlyError(body.error));
+      error.status=response.status;
+      throw error;
+    }
+    return body;
   }
-  async function refresh(){
-    const response=await fetch('/api/v1/readings/latest',{headers:{authorization:`Bearer ${token}`}});
-    const body=await response.json(); if(!response.ok) throw new Error(translateError(body.error)||'Não foi possível carregar as leituras.');
-    const r=body.reading;
-    if(!r){status.textContent='Nenhuma leitura chegou à API ainda.';return;}
-    document.querySelector('#temperature').textContent=`${Number(r.temperature_c).toFixed(1)} °C`;
-    document.querySelector('#humidity').textContent=`${Number(r.humidity_percent).toFixed(1)} %`;
-    document.querySelector('#details').textContent=`Dispositivo ${r.device_id}, sequência ${r.sequence}, ${new Date(r.timestamp).toLocaleString('pt-BR')}`;
-    document.querySelector('#last-contact').textContent=`Último contato do dispositivo: ${r.last_seen_at ? new Date(r.last_seen_at).toLocaleString('pt-BR') : 'não informado'}`;
-    status.textContent='Conectado'; status.className='';
+  function formatDate(value){
+    if(!value)return 'Não informado';
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?'Não informado':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'medium'});
+  }
+  function setConnected(connected){
+    connectionPill.classList.toggle('offline',!connected);
+    $('#connection-label').textContent=connected?'Conectado':'Sem conexão';
+    if(!connected)$('#device-status').textContent='Sem resposta da API';
+  }
+  function showNotice(text,isError=false){
+    notice.textContent=text;
+    notice.classList.toggle('hidden',!text);
+    notice.classList.toggle('error',isError);
+  }
+  function showLogin(message='',isError=false){
+    if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
+    token='';
+    dashboardView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+    loginStatus.textContent=message||'Acesso restrito à equipe do projeto.';
+    loginStatus.classList.toggle('error',isError);
+    $('#login-form').reset();
+  }
+
+  $('#login-form').addEventListener('submit',async event=>{
+    event.preventDefault();
+    loginButton.disabled=true;
+    loginButton.textContent='Conectando…';
+    loginStatus.textContent='Validando acesso…';
+    loginStatus.classList.remove('error');
+    const formData=Object.fromEntries(new FormData(event.currentTarget));
+    try{
+      const response=await fetch('/api/v1/auth/token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(formData)});
+      const body=await readJson(response);
+      token=body.access_token;
+      loginView.classList.add('hidden');
+      dashboardView.classList.remove('hidden');
+      await refreshDashboard();
+      if(refreshTimer)clearInterval(refreshTimer);
+      refreshTimer=setInterval(()=>refreshDashboard(),10000);
+    }catch(error){
+      loginStatus.textContent=error.message||friendlyError();
+      loginStatus.classList.add('error');
+    }finally{
+      loginButton.disabled=false;
+      loginButton.textContent='Entrar no painel';
+    }
+  });
+
+  $('#logout-button').addEventListener('click',()=>showLogin());
+  $('#refresh-button').addEventListener('click',()=>refreshDashboard());
+  document.querySelectorAll('.chart-tab').forEach(button=>button.addEventListener('click',()=>{
+    activeMetric=button.dataset.metric;
+    document.querySelectorAll('.chart-tab').forEach(tab=>tab.classList.toggle('active',tab===button));
+    renderChart();
+  }));
+
+  async function refreshDashboard(){
+    if(!token)return;
+    try{
+      const headers={authorization:`Bearer ${token}`};
+      const [latestResponse,historyResponse]=await Promise.all([
+        fetch('/api/v1/readings/latest',{headers}),
+        fetch('/api/v1/readings?limit=50',{headers})
+      ]);
+      const [latest,history]=await Promise.all([readJson(latestResponse),readJson(historyResponse)]);
+      setConnected(true);
+      showNotice('');
+      if(!latest.reading){
+        $('#temperature').innerHTML='—<span class="metric-unit">°C</span>';
+        $('#humidity').innerHTML='—<span class="metric-unit">%</span>';
+        $('#device-status').textContent='Aguardando dados';
+        $('#record-device').textContent='Ainda sem leitura';
+        $('#record-meta').textContent='Aguardando o primeiro envio do dispositivo.';
+      }else{
+        const r=latest.reading;
+        $('#temperature').innerHTML=`${Number(r.temperature_c).toFixed(1)}<span class="metric-unit">°C</span>`;
+        $('#humidity').innerHTML=`${Number(r.humidity_percent).toFixed(1)}<span class="metric-unit">%</span>`;
+        const lastSeenAt=r.last_seen_at?new Date(r.last_seen_at):null;
+        const deviceIsRecent=lastSeenAt&&Number.isFinite(lastSeenAt.getTime())&&(Date.now()-lastSeenAt.getTime())<=30000;
+        $('#device-status').textContent=deviceIsRecent?'Online':'Sem leitura recente';
+        $('#device-caption').textContent=`ESP32-C3 · sequência ${r.sequence}`;
+        $('#record-device').textContent=`Dispositivo ${r.device_id}`;
+        $('#record-meta').textContent=`Sequência ${r.sequence} · leitura em ${formatDate(r.timestamp)} · último contato ${formatDate(r.last_seen_at)}`;
+      }
+      readings=Array.isArray(history.readings)?history.readings.slice().reverse():[];
+      renderChart();
+    }catch(error){
+      if(error.status===401){showLogin(error.message,true);return;}
+      setConnected(false);
+      showNotice(error.message||friendlyError(),true);
+    }
+  }
+
+  function renderChart(){
+    const svg=$('#history-chart');
+    const empty=$('#chart-empty');
+    const temperature=activeMetric==='temperature_c';
+    const color=temperature?'#d99612':'#378e87';
+    const fill=temperature?'#f4bd4d':'#72b9ad';
+    const unit=temperature?'°C':'%';
+    svg.setAttribute('aria-label',temperature?'Gráfico histórico de temperatura':'Gráfico histórico de umidade');
+    if(readings.length===0){svg.innerHTML='';empty.classList.remove('hidden');return;}
+    empty.classList.add('hidden');
+
+    const width=760,height=260,left=58,right=20,top=19,bottom=35;
+    const plotWidth=width-left-right,plotHeight=height-top-bottom;
+    const values=readings.map(row=>Number(row[activeMetric])).filter(Number.isFinite);
+    if(!values.length){svg.innerHTML='';empty.classList.remove('hidden');return;}
+    let min=Math.min(...values),max=Math.max(...values);
+    if(max-min<0.1){min-=temperature?0.5:1;max+=temperature?0.5:1;}
+    else{const pad=(max-min)*.16;min-=pad;max+=pad;}
+    const x=index=>left+(readings.length===1?plotWidth/2:index*plotWidth/(readings.length-1));
+    const y=value=>top+(max-value)*plotHeight/(max-min);
+    const points=readings.map((row,index)=>({x:x(index),y:y(Number(row[activeMetric])),value:Number(row[activeMetric]),time:row.timestamp})).filter(point=>Number.isFinite(point.y));
+    const line=points.map((point,index)=>`${index?'L':'M'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+    const area=`${line} L ${points[points.length-1].x.toFixed(1)} ${(top+plotHeight).toFixed(1)} L ${points[0].x.toFixed(1)} ${(top+plotHeight).toFixed(1)} Z`;
+    const grid=[];
+    for(let index=0;index<4;index++){
+      const value=max-(max-min)*index/3;
+      const gy=top+plotHeight*index/3;
+      grid.push(`<line x1="${left}" y1="${gy.toFixed(1)}" x2="${(width-right).toFixed(1)}" y2="${gy.toFixed(1)}" stroke="#edf0e9" stroke-width="1"/><text x="${left-11}" y="${(gy+4).toFixed(1)}" text-anchor="end" fill="#89958d" font-size="11" font-family="system-ui">${value.toFixed(temperature?1:0)}${unit}</text>`);
+    }
+    const firstTime=readings[0]?.timestamp,lastTime=readings[readings.length-1]?.timestamp;
+    const shortTime=value=>value?new Date(value).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'';
+    const last=points[points.length-1];
+    svg.innerHTML=`<defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${fill}" stop-opacity=".30"/><stop offset="100%" stop-color="${fill}" stop-opacity=".015"/></linearGradient></defs>${grid.join('')}<path d="${area}" fill="url(#chart-fill)"/><path d="${line}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${points.length>1?`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="7" fill="${color}" stroke="#fff" stroke-width="3"><title>${last.value.toFixed(1)} ${unit} · ${formatDate(last.time)}</title></circle>`:''}<text x="${left}" y="${height-8}" fill="#89958d" font-size="10" font-family="system-ui">${shortTime(firstTime)}</text><text x="${width-right}" y="${height-8}" text-anchor="end" fill="#89958d" font-size="10" font-family="system-ui">${shortTime(lastTime)}</text>`;
   }
 </script>
-</body></html>
+</body>
+</html>
