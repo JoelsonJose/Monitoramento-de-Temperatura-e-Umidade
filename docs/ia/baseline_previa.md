@@ -1,22 +1,22 @@
-# AI preview problem and baseline
+# Problema de IA e baseline da prévia
 
-## Preview problem
+## Problema da prévia
 
-Estimate the next five-second temperature and humidity readings from the DHT11 history. This is a small forecasting baseline for the preview; it is not a trained AI model and must not be presented as one.
+Estimar as próximas leituras de temperatura e umidade, previstas para ocorrer a cada cinco segundos, usando o histórico do DHT11. Este baseline simples serve como referência inicial e não deve ser apresentado como um modelo de IA treinado.
 
-## Physical data and time split
+## Dados físicos e divisão temporal
 
-The calculation used the latest 100 consecutive physical readings from device `esp32c3-01`, read from the local API/PostgreSQL on 16 November 2026. The sample covered sequences 693–792 and timestamps 2026-11-16 02:15:23Z–02:23:41Z. The first 80 rows are the earlier portion; the last 20 rows form the time-ordered evaluation segment. No rows were shuffled.
+O cálculo usou as 100 leituras físicas consecutivas mais recentes do dispositivo `esp32c3-01`, consultadas na API/PostgreSQL local em 16/11/2026. A amostra cobriu sequências 693–792 e os horários 2026-11-16 02:15:23Z–02:23:41Z. As primeiras 80 linhas formaram o trecho anterior e as últimas 20 foram usadas na avaliação temporal. As linhas não foram embaralhadas.
 
 ## Baseline
 
-Persistence forecast: for each test row, predict the next temperature and humidity by carrying forward the preceding reading. Metric: mean absolute error (MAE).
+Previsão persistente: para cada ponto de teste, estimar temperatura e umidade seguintes repetindo o valor da leitura anterior. Métrica: erro absoluto médio (MAE).
 
-| Target | Test points | MAE |
+| Variável | Pontos de teste | MAE |
 |---|---:|---:|
-| Temperature | 20 | 0.01 °C |
-| Relative humidity | 20 | 0.10 percentage points |
+| Temperatura | 20 | 0,01 °C |
+| Umidade relativa | 20 | 0,10 ponto percentual |
 
-## Limits and next step
+## Limitações e próxima etapa
 
-The observed values changed very little over this short, stable eight-minute window. The low MAE only describes this sample and does not show that the baseline works across changing conditions. The final delivery requires at least 48 hours of data, a temporal train/test evaluation, a model that beats a baseline, `/predict`, and a model card. The sample and script of the query are reproducible from the protected API, but the API credentials are intentionally not recorded here.
+Os valores variaram pouco durante essa janela estável de aproximadamente oito minutos. O MAE baixo descreve somente esta amostra e não comprova desempenho em condições variáveis. A entrega final exige pelo menos 48 horas de dados, avaliação temporal, modelo que supere o baseline, endpoint `/predict` e model card. A consulta e os dados podem ser reproduzidos pela API protegida; credenciais não são registradas neste documento.

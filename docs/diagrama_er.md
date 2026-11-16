@@ -2,9 +2,9 @@
 
 ```mermaid
 erDiagram
-  USERS ||--o{ DEVICE_ACCESS : authorized_for
-  DEVICES ||--o{ DEVICE_ACCESS : grants
-  DEVICES ||--o{ READINGS : records
+  USERS ||--o{ DEVICE_ACCESS : autorizado_para
+  DEVICES ||--o{ DEVICE_ACCESS : concede
+  DEVICES ||--o{ READINGS : registra
   USERS {
     varchar username PK
     varchar role
@@ -32,4 +32,4 @@ erDiagram
   }
 ```
 
-The API migration creates these tables on startup, backfills device rows for existing measurements, seeds the configured demo user and device, and updates `devices.last_seen_at` whenever valid device traffic arrives. `readings` has a unique constraint on `(device_id, sequence)` to make duplicate submissions idempotent.
+A migração da API cria essas tabelas na inicialização, adiciona linhas de dispositivos existentes, prepara o usuário e dispositivo de demonstração configurados e atualiza `devices.last_seen_at` quando chega tráfego válido. A tabela `readings` tem uma restrição única em `(device_id, sequence)` para evitar duplicar envios com a mesma sequência.

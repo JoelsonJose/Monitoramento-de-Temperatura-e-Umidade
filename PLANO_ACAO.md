@@ -1,50 +1,55 @@
-# Action plan
+# Plano de ação
 
 ## Matriz de responsabilidades
 
-O documento de orientação pede responsáveis e links para commits, mas não define a distribuição entre as pessoas. A divisão abaixo foi definida por Joelson para a equipe. Os links apontam para o commit que registra estas atribuições; tarefas concluídas devem receber seus próprios commits de evidência. Os commits anteriores continuam atribuídos aos autores que realmente os fizeram.
+A orientação pede responsáveis e links para commits, mas não determina a distribuição individual. Joelson definiu a divisão abaixo para esta equipe. Os links apontam para o commit que registra as atribuições; tarefas realizadas devem receber seus próprios commits de evidência.
 
-| Integrante | Responsabilidade | Evidência/entrega | Commit que registra a atribuição |
+| Integrante | Responsabilidade | Evidência/entrega | Commit de atribuição |
 |---|---|---|---|
-| Joelson | Firmware ESP32-C3 e API | Firmware, leituras do DHT11, Wi-Fi, ingestão na API | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| Lucas Ximenes | Docker e infraestrutura | Compose, implantação local, saúde dos serviços e infraestrutura | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| Homero | Banco de dados | Modelo PostgreSQL, esquema, persistência e consultas | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| Nicollas | Testes e qualidade | Casos de teste, resultados, métricas e evidências | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| Thayanne | Documentação | README, relatório e documentação técnica | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| João César | Documentação | Relatório, documentação técnica e links para evidências | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
-| Morgana | Apresentação | Slides e roteiro da demonstração | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Joelson | Firmware ESP32-C3 e API | Firmware, leituras do DHT11, Wi-Fi e ingestão | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Lucas Ximenes | Docker e infraestrutura | Compose, implantação e saúde dos serviços | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Homero | Banco de dados | Modelo PostgreSQL, esquema e consultas | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Nicollas | Testes e qualidade | Casos, resultados e métricas de teste | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Thayanne | Documentação | Relatório e documentação técnica | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| João César | Documentação | Relatório e evidências técnicas | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Morgana | Apresentação | Slides e roteiro de demonstração | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
 
-As responsabilidades foram distribuídas para esta prévia. Tarefas ainda não concluídas permanecem abertas no plano abaixo.
+## Estado da prévia técnica (16/11/2026)
 
-## Plano de ação
+| Item | Estado e evidência |
+|---|---|
+| Sensor | Escopo da prévia: um DHT11 conectado à ESP32-C3; leituras de temperatura e umidade observadas |
+| Página local | Leitura e atualização local foram demonstradas pela equipe |
+| Wi-Fi (F1) | Perda com modem desligado e reconexão após ligá-lo confirmadas funcionalmente |
+| Falha de sensor (F3) | Falha detectada e leituras válidas restabelecidas após reconectar DATA |
+| API pública e banco | `/health` confirmou conexão com banco em verificação anterior; placa conectada e Serial Monitor mostrou duas respostas HTTP 201 da API pública |
+| Dashboard | Implementado com autenticação e leitura mais recente; interface foi traduzida para português. Confirmar no Render a publicação da tradução e a leitura atual na apresentação |
+| Segurança | 401 sem token e 403 sem acesso ao dispositivo cobertos pelos testes locais |
+| CI | Cinco testes de rota e unidade; as execuções mais recentes registradas no GitHub Actions passaram |
+| ThingSpeak | Duas respostas HTTP 200 anteriores; tentativas mais recentes HTTP 400, integração precisa de rechecagem |
+| IA | Baseline persistente da prévia calculado com 100 leituras; modelo final e coleta de 48 h ficam para entrega final |
+| Mobile | Figma navegável e aplicativo/PWA não apresentados; pendentes conforme a orientação |
+| Pesquisa | Roteiro pronto; faltam entrevistas/respostas reais para persona, jornada e proposta de valor |
+| Inglês técnico | README, documentação da API e slides do pitch (até seis) em inglês; abertura oral de dois minutos preparada para Nicollas |
+| Documentação | Diagrama elétrico, arquitetura, ER, componentes, plano de testes e matriz de responsabilidades no repositório |
 
-Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
+## Próximas ações para a demonstração
 
-### Lacunas obrigatórias da prévia (16/11)
+1. Alimentar a ESP32-C3 e abrir Serial Monitor a 115200 baud.
+2. Mostrar leituras do DHT11, estado do Wi-Fi e IP da placa.
+3. Abrir o dashboard em português, autenticar-se e atualizar a página para conferir temperatura, umidade e horário do último contato.
+4. Apontar as respostas HTTP 201 registradas no Serial Monitor como confirmação de envio à API pública.
+5. Mostrar a matriz, os testes e os links do repositório. Nicollas apresenta a abertura em inglês; Morgana conduz a apresentação conforme a divisão da equipe.
 
-| Lacuna para a prévia | Responsável | O que falta / evidência a obter | Estado |
+## Pendências da entrega final (30/11/2026)
+
+| Área | Trabalho restante | Responsável(is) | Evidência esperada |
 |---|---|---|---|
-| API pública HTTPS e ingestão da placa | Lucas Ximenes / Homero / Joelson | Configurar segredos ausentes no Render, atualizar credenciais locais da ESP32 com endpoint e certificado CA, reflashear e confirmar leitura física | API publicada em `https://monitoramento-iot-api.onrender.com`; `/health` confirmou banco conectado. `DEVICE_API_KEY`, `DEMO_USER` e `DEMO_PASSWORD` ainda ausentes; envio HTTPS da placa pendente |
-| ThingSpeak | Joelson / Lucas Ximenes | Criar canal com Field 1 = temperatura e Field 2 = umidade; manter Write API Key fora do Git; observar resposta HTTPS e entry ID | Duas respostas HTTP 200 com IDs 1 e 2 foram observadas anteriormente; após a última recriação local da API surgiram respostas 400 e a integração precisa de nova confirmação |
-| App mobile e protótipo navegável | Morgana / Lucas Ximenes | Prototipar no Figma e demonstrar app/PWA com login e lista de leituras reais. Dashboard web local não substitui este item | Não implementado |
-| Pesquisa, persona, jornada e proposta de valor | Morgana | Aplicar o roteiro `docs/ux/pesquisa_previa.md` a pelo menos 5 usuários reais e derivar os artefatos | Roteiro pronto; respostas reais pendentes |
-| Problema de IA e baseline | Morgana | Definir tarefa e calcular baseline simples | Feito para prévia: forecast da próxima leitura com baseline persistente; ver `docs/ia/baseline_previa.md` |
-| Segurança 401/403 | Nicollas / Lucas Ximenes | Demonstrar JWT sem autorização para um dispositivo | Implementado; validação local retornou 401 sem token e 403 para dispositivo sem permissão |
-| Testes de rotas no CI | Nicollas / Joelson | Manter testes HTTP das rotas principais no GitHub Actions | Implementados; 5 testes passaram localmente. Execução GitHub Actions após push pendente |
-| Modelo ER e dados de exemplo | Homero | Manter tabelas device, user, device access e readings, diagrama ER e seed | Implementados na migração; testados com PostgreSQL local; ver `docs/diagrama_er.md` |
-| Diagrama de arquitetura completo e último contato | Lucas Ximenes / Homero | Documentar caminho local e público, protocolos/portas, e mostrar heartbeat | Diagrama e `last_seen_at` implementados; Render público e banco respondem no health check; heartbeat público aguarda configuração e envio da ESP32 |
-| Tag da prévia | Lucas Ximenes | Criar a tag `v0.9-previa` no commit a ser entregue | Criada e publicada no GitHub em `8798c9e` |
-| F1 | Nicollas / Joelson | Registrar a evidência da demonstração | Concluído funcionalmente conforme confirmação do usuário; queda e reconexão observadas |
-
-### Pendências da entrega final (30/11)
-
-| Gap | UC / criterion | Concrete action | Owner | Due | Completion evidence | Status |
-|---|---|---|---|---|---|---|
-| Buffer, watchdog and full resilience test set | IoT / Cloud / Quality | Add ordered offline buffer, watchdog/power recovery, degraded status; run F1–F6 and record loss/recovery | Joelson / Lucas Ximenes / Nicollas | 30/11/2026 | R1–R8 evidence; loss ≤1% over 24 h; device availability and recovery times | Open |
-| Cloud operations and database recovery | Cloud / Database | Configure deploy pipeline, centralized logs, restart, managed backup/restore and cost estimate | Lucas Ximenes / Homero | 30/11/2026 | Public deployment, restore proof and monthly cost | Open |
-| Advanced security controls | Security | Add object authorization, TLS across the path, rate limits, ZAP, dependency checks and LGPD lifecycle | Nicollas / Lucas Ximenes | 30/11/2026 | Automated security evidence and updated threat model | Open |
-| Quality metrics | Quality | Add route tests, ≥60% backend coverage, static analysis, reviewed PRs and ISO/IEC 25010 report | Nicollas | 30/11/2026 | CI coverage and quality report | Open |
-| AI model | AI | Collect ≥48 h, clean data, use temporal split, outperform baseline, deploy `/predict` and write model card | Morgana | 30/11/2026 | Notebook, metrics, endpoint and model card | Open |
-| Mobile completion and user evaluation | UE Mobile | Add alerts/offline state, heuristic review and test with five users; calculate SUS ≥68 | Morgana / Lucas Ximenes | 30/11/2026 | Mobile build and SUS report | Open |
-| Final research validation | Consumer Behaviour | Validate persona/value proposition and relate dashboard indicators to user decisions | Morgana | 30/11/2026 | Anonymized findings and validation evidence | Open |
-| Final documentation and release | All | Complete English manual, final architecture/evidence, ≤5 min video and tag `v1.0` | Thayanne / João César / Morgana | 30/11/2026 | Reproducible README, video and release tag | Open |
+| IoT e resiliência | Buffer e reenvio ordenado, watchdog, F1–F6 e medidas de perda/recuperação por 24 h | Joelson / Lucas Ximenes / Nicollas | Registros de teste e métricas |
+| Cloud e banco | Backup/restauração, logs, reinício de serviço e estimativa de custo | Lucas Ximenes / Homero | Evidência de recuperação e custo mensal |
+| Segurança | Autorização por objeto, limites de requisição, ZAP, verificação de dependências e ciclo LGPD | Nicollas / Lucas Ximenes | Relatório e modelo de ameaças atualizado |
+| Qualidade | Cobertura ≥60%, análise estática, revisão de PR e relatório ISO/IEC 25010 | Nicollas | CI e relatório de qualidade |
+| IA | Coletar ≥48 h, avaliar modelo temporal, superar baseline e criar `/predict`/model card | Morgana | Métricas, endpoint e model card |
+| Mobile | Aplicativo, alertas, modo offline e teste SUS com cinco usuários | Morgana / Lucas Ximenes | Aplicativo e relatório SUS |
+| Pesquisa | Validar persona/proposta de valor com usuários | Morgana | Resultados anonimizados |
+| Documentação e release | Completar documentação, vídeo ≤5 min e tag `v1.0` | Thayanne / João César / Morgana | Repositório, vídeo e release |
