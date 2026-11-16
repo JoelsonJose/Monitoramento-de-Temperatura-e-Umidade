@@ -61,6 +61,7 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 - `docs/plano_testes.md` — preview test cases and evidence
 - `docs/ia/baseline_previa.md` — preview forecasting problem and measured persistence baseline
 - `docs/ux/pesquisa_previa.md` — interview guide; real responses still need to be collected
+- `docs/pitch/opening_english.md` — two-minute English opening script assigned to Nicollas
 - `REQUISITOS_UC.md` — evidence matrix for the eight course units
 - `RESILIENCIA.md` — resilience requirements and test record
 - `PLANO_ACAO.md` — open work, owners, and evidence to collect

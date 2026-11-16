@@ -33,7 +33,7 @@ Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
 | Testes de rotas no CI | Nicollas / Joelson | Manter testes HTTP das rotas principais no GitHub Actions | Implementados; 5 testes passaram localmente. Execução GitHub Actions após push pendente |
 | Modelo ER e dados de exemplo | Homero | Manter tabelas device, user, device access e readings, diagrama ER e seed | Implementados na migração; testados com PostgreSQL local; ver `docs/diagrama_er.md` |
 | Diagrama de arquitetura completo e último contato | Lucas Ximenes / Homero | Documentar caminho local e público, protocolos/portas, e mostrar heartbeat | Diagrama e `last_seen_at` implementados; dashboard e health local verificados; Render pendente |
-| Tag da prévia | Lucas Ximenes | Criar a tag `v0.9-previa` no commit a ser entregue | Não criada |
+| Tag da prévia | Lucas Ximenes | Criar a tag `v0.9-previa` no commit a ser entregue | Criada e publicada no GitHub em `8798c9e` |
 | F1 | Nicollas / Joelson | Registrar a evidência da demonstração | Concluído funcionalmente conforme confirmação do usuário; queda e reconexão observadas |
 
 ### Pendências da entrega final (30/11)
