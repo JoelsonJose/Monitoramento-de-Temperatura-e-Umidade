@@ -8,6 +8,8 @@ Homero, Joelson, Lucas Ximenes, Nicollas, Thayanne, João César, and Morgana.
 
 Preview responsibilities are recorded in [`PLANO_ACAO.md`](PLANO_ACAO.md).
 
+Preview PDFs: [technical delivery](entregas/Relatorio_Previa_IoT.pdf) and [presentation](entregas/Apresentacao_Previa_IoT.pdf).
+
 ## Hardware
 
 - ESP32-C3 development board

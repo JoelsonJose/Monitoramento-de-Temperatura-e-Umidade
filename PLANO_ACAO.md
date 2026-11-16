@@ -6,13 +6,13 @@ O documento de orientação pede responsáveis e links para commits, mas não de
 
 | Integrante | Responsabilidade | Evidência/entrega | Commit que registra a atribuição |
 |---|---|---|---|
-| Joelson | Firmware ESP32-C3 e API | Firmware, leituras do DHT11, Wi-Fi, ingestão na API | Commit de atribuição a ser vinculado |
-| Lucas Ximenes | Docker e infraestrutura | Compose, implantação local, saúde dos serviços e infraestrutura | Commit de atribuição a ser vinculado |
-| Homero | Banco de dados | Modelo PostgreSQL, esquema, persistência e consultas | Commit de atribuição a ser vinculado |
-| Nicollas | Testes e qualidade | Casos de teste, resultados, métricas e evidências | Commit de atribuição a ser vinculado |
-| Thayanne | Documentação | README, relatório e documentação técnica | Commit de atribuição a ser vinculado |
-| João César | Documentação | Relatório, documentação técnica e links para evidências | Commit de atribuição a ser vinculado |
-| Morgana | Apresentação | Slides e roteiro da demonstração | Commit de atribuição a ser vinculado |
+| Joelson | Firmware ESP32-C3 e API | Firmware, leituras do DHT11, Wi-Fi, ingestão na API | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Lucas Ximenes | Docker e infraestrutura | Compose, implantação local, saúde dos serviços e infraestrutura | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Homero | Banco de dados | Modelo PostgreSQL, esquema, persistência e consultas | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Nicollas | Testes e qualidade | Casos de teste, resultados, métricas e evidências | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Thayanne | Documentação | README, relatório e documentação técnica | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| João César | Documentação | Relatório, documentação técnica e links para evidências | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
+| Morgana | Apresentação | Slides e roteiro da demonstração | [4deede1](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/commit/4deede1) |
 
 As responsabilidades foram distribuídas para esta prévia. Tarefas ainda não concluídas permanecem abertas no plano abaixo.
 
