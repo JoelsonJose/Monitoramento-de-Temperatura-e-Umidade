@@ -23,3 +23,7 @@ Ingestion JSON:
 ```
 
 Duplicate `(device_id, sequence)` pairs are idempotent. Payloads outside temperature `-40..80 °C` or humidity `0..100%` return `400`. Missing or invalid authentication returns `401`. Per-user object authorization (`403`), rate limiting, full OpenAPI generation and production TLS configuration remain to be completed before the final delivery.
+
+## Optional ThingSpeak forwarding
+
+Set `THINGSPEAK_WRITE_API_KEY` only in the ignored local `.env` after creating a channel with field 1 for temperature (°C) and field 2 for humidity (%). For each new physical reading, the API may forward values to `https://api.thingspeak.com/update` over HTTPS, limited to one write per 16 seconds. Successful responses are logged as `thingspeak_write_ok` with HTTP status and entry ID; the key is never logged. Leave the variable empty to disable forwarding. Live writes were verified on 16/11/2026: HTTP 200 with entry IDs 1 and 2, 20 seconds apart.

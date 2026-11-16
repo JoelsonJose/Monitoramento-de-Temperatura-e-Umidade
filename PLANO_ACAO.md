@@ -26,10 +26,10 @@ Nenhum item abaixo é marcado como concluído sem artefato demonstrável.
 |---|---|---|---|
 | Segundo sensor físico | Joelson / equipe | A orientação pede pelo menos dois sensores. O protótipo disponível tem um DHT11; explicar a limitação e obter aceite explícito do professor | Exceção não confirmada |
 | API pública HTTPS e ingestão da placa | Lucas Ximenes / Homero / Joelson | Publicar API em nuvem com TLS e verificar leitura física real chegando por URL pública | Só rede local HTTP comprovada |
-| ThingSpeak | Joelson | Criar canal real, respeitar intervalo mínimo de 15 s e verificar resposta HTTP | Não implementado |
+| ThingSpeak | Joelson / Lucas Ximenes | Criar canal com Field 1 = temperatura e Field 2 = umidade; colocar Write API Key somente no `.env` local; observar resposta HTTPS 200 e entry ID nos logs da API | Confirmado: duas respostas HTTP 200; entry IDs 1 e 2; intervalo observado de 20 s |
 | App mobile e protótipo navegável | Morgana / Lucas Ximenes | Prototipar no Figma e demonstrar app/PWA com login e lista de leituras reais. Dashboard web local não substitui este item | Não implementado |
-| Pesquisa, persona, jornada e proposta de valor | Morgana | Evidenciar pelo menos 5 entrevistas ou 20 respostas e derivar os artefatos | Sem evidência |
-| Problema de IA e baseline | Morgana | Definir tarefa e calcular baseline simples | Sem evidência |
+| Pesquisa, persona, jornada e proposta de valor | Morgana | Aplicar o roteiro `docs/ux/pesquisa_previa.md` a pelo menos 5 usuários reais e derivar os artefatos | Roteiro pronto; respostas reais pendentes |
+| Problema de IA e baseline | Morgana | Definir tarefa e calcular baseline simples | Feito para prévia: forecast da próxima leitura com baseline persistente; ver `docs/ia/baseline_previa.md` |
 | Segurança 401/403 | Nicollas / Lucas Ximenes | Manter evidência de 401 e implementar/testar 403 por autorização de objeto | JWT/401 presentes; 403 ausente |
 | Testes de rotas no CI | Nicollas / Joelson | Adicionar testes automatizados HTTP das rotas principais; os três testes atuais são unitários de token/payload | CI roda testes unitários; testes de rota ausentes |
 | Modelo ER e dados de exemplo | Homero | Criar tabelas de dispositivo, leitura e usuário, diagrama ER e seed com dados identificados | Apenas tabela readings |

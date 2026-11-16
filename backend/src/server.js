@@ -9,6 +9,39 @@ const { Pool } = pg;
 const port = Number(process.env.PORT || 3000);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
+const THINGSPEAK_MIN_INTERVAL_MS = 16_000;
+let lastThingSpeakAttemptAt = 0;
+
+function forwardToThingSpeak(reading) {
+  const writeKey = process.env.THINGSPEAK_WRITE_API_KEY;
+  if (!writeKey) return;
+
+  const now = Date.now();
+  if (now - lastThingSpeakAttemptAt < THINGSPEAK_MIN_INTERVAL_MS) return;
+  lastThingSpeakAttemptAt = now;
+
+  const fields = new URLSearchParams({
+    api_key: writeKey,
+    field1: String(reading.temperature_c),
+    field2: String(reading.humidity_percent),
+  });
+
+  // Use Node's HTTPS certificate validation; never log or return the channel key.
+  void fetch('https://api.thingspeak.com/update', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: fields,
+  }).then(async response => {
+    const entryId = Number((await response.text()).trim());
+    if (!response.ok || !Number.isInteger(entryId) || entryId <= 0) {
+      console.error(JSON.stringify({ event: 'thingspeak_write_failed', http_status: response.status }));
+      return;
+    }
+    console.log(JSON.stringify({ event: 'thingspeak_write_ok', http_status: response.status, entry_id: entryId }));
+  }).catch(() => {
+    console.error(JSON.stringify({ event: 'thingspeak_write_failed', http_status: 0 }));
+  });
+}
 
 function reply(res, status, data) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -57,6 +90,7 @@ async function handler(req, res) {
          VALUES($1,$2,$3,$4,$5) ON CONFLICT(device_id, sequence) DO NOTHING RETURNING id`,
         [body.device_id, body.sequence, body.timestamp, body.temperature_c, body.humidity_percent]
       );
+      if (result.rowCount) forwardToThingSpeak(body);
       return reply(res, result.rowCount ? 201 : 200, { accepted: Boolean(result.rowCount), duplicate: !result.rowCount });
     }
     if (req.method === 'GET' && url.pathname === '/api/v1/readings/latest') {
@@ -89,6 +123,9 @@ async function handler(req, res) {
 
 const server = http.createServer(handler);
 server.listen(port, '0.0.0.0', () => console.log(`API listening on ${port}`));
+if (!process.env.THINGSPEAK_WRITE_API_KEY) {
+  console.log('ThingSpeak forwarding disabled: set THINGSPEAK_WRITE_API_KEY in the local .env to enable it.');
+}
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => { server.close(); await pool.end(); process.exit(0); });
 }

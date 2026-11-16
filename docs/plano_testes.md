@@ -17,6 +17,7 @@
 | API-03 | Validar sintaxe JavaScript e configuração Docker Compose | Aprovados |
 | API-04 | Subir PostgreSQL/API via Docker e validar integração básica | Aprovado: contêineres API e PostgreSQL saudáveis; `/health` reportou banco conectado; dashboard HTTP 200; login e consulta autenticada HTTP 200; rota protegida sem token HTTP 401 |
 | API-05 | Receber e persistir leitura física da ESP32 | Aprovado: firmware compilado e carregado na ESP32-C3 pela COM5; API consultada após o envio retornou 12 leituras de `esp32c3-01`; sequências consecutivas chegaram em intervalos de 5 s; registros continham temperatura, umidade e timestamp UTC |
+| API-06 | Encaminhar leitura física ao ThingSpeak | Aprovado: duas gravações de leituras físicas por HTTPS; HTTP 200, entry IDs 1 e 2, intervalo de 20 s |
 
 ## Limites do registro
 

@@ -33,7 +33,11 @@ The firmware logs Wi-Fi start, association, IP assignment, and disconnect reason
 
 ## API and dashboard
 
-The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `/`. During the local integration check, both Compose services were healthy; `/health` returned `ok` with the database connected, the dashboard and demo login returned HTTP 200, and the protected route returned HTTP 401 without a token. The uploaded ESP32-C3 then sent at least 12 DHT11 readings with device ID, sequence, and UTC timestamp; the records were confirmed in PostgreSQL. The preview uses HTTP on the private LAN; deploy behind HTTPS before public exposure.
+The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. This is a browser dashboard, separate from the ESP32's status page at `http://<ESP32_IP>/`.
+
+To enable ThingSpeak, create a channel with field 1 for temperature (°C) and field 2 for humidity (%), then set the channel Write API Key in the ignored local `.env` as `THINGSPEAK_WRITE_API_KEY`. The API forwards physical readings over HTTPS at most once per 16 seconds and logs the HTTP result and entry ID without logging the key. Leave it blank to disable forwarding. Live writes were verified on 16/11/2026 with HTTP 200 and entry IDs 1 and 2, 20 seconds apart. The free ThingSpeak rate is 15 seconds per channel.
+
+During the local integration check, both Compose services were healthy; `/health` returned `ok` with the database connected, the dashboard and demo login returned HTTP 200, and the protected route returned HTTP 401 without a token. The uploaded ESP32-C3 then sent physical DHT11 readings with device ID, sequence, and UTC timestamp; the records were confirmed in PostgreSQL. The preview API runs over HTTP on the private LAN; deploy it behind HTTPS before public exposure.
 
 Before exposing the API publicly, put it behind an HTTPS reverse proxy or a cloud provider's TLS ingress. Do not expose PostgreSQL to the public Internet. Firmware supports HTTPS when configured with a trusted PEM certificate as `API_ROOT_CA`; the current local preview uses the private-LAN endpoint and a device key. Do not commit credentials. Public cloud delivery has not yet been verified on hardware.
 
@@ -49,10 +53,12 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 - `docs/diagrama_eletrico.svg` — ESP32-C3 and DHT11 wiring
 - `docs/lista_componentes.md` — bill of materials and known quantities
 - `docs/plano_testes.md` — preview test cases and evidence
+- `docs/ia/baseline_previa.md` — preview forecasting problem and measured persistence baseline
+- `docs/ux/pesquisa_previa.md` — interview guide; real responses still need to be collected
 - `REQUISITOS_UC.md` — evidence matrix for the eight course units
 - `RESILIENCIA.md` — resilience requirements and test record
 - `PLANO_ACAO.md` — open work, owners, and evidence to collect
 
 ## Current limitations
 
-The present preview hardware uses one DHT11 module; the team will explain the available hardware during the demonstration. The sensor and reused enclosure are not calibrated or certified for industrial cold rooms. Public cloud hosting, ThingSpeak, mobile app, AI model, user study, duplicate/replay testing, and full security controls remain open work. See the action plan and evidence matrix for current statuses.
+The present preview hardware uses one DHT11 module; the team will explain the available hardware during the demonstration. The course guide asks for two physical sensors, so the one-sensor setup is an exception awaiting instructor approval. The sensor and reused enclosure are not calibrated or certified for industrial cold rooms. Public cloud hosting, mobile app, final AI model, primary user study, duplicate/replay testing, and full security controls remain open work. ThingSpeak forwarding is enabled and two live writes returned HTTP 200 with entry IDs 1 and 2. See the action plan and evidence matrix for current statuses.

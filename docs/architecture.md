@@ -9,10 +9,10 @@ flowchart LR
   Browser -->|HTTPS after deployment| API
   API --> DASH[Web dashboard]
   API -. planned .-> ML[Prediction service]
-  ESP -. planned: ThingSpeak channel .-> TS[ThingSpeak]
+  API -->|HTTPS, max one update/16 s, when configured| TS[ThingSpeak]
 ```
 
-The demonstrated path now runs from the DHT11 through the ESP32-C3 to the local API and PostgreSQL. Twelve live board readings were confirmed in the database, with device ID, sequence, UTC timestamp, temperature and humidity. This preview uses HTTP on the private LAN; public HTTPS deployment, ThingSpeak and model serving are not yet demonstrated.
+The demonstrated path runs from the DHT11 through the ESP32-C3 to the local API and PostgreSQL, then forwards physical temperature/humidity readings to ThingSpeak. Two HTTPS writes returned HTTP 200 with entry IDs 1 and 2, 20 seconds apart. The local ESP32-to-API hop still uses HTTP on the private LAN; public API HTTPS remains pending.
 
 The preview prototype uses one DHT11. Its wiring is documented in [`diagrama_eletrico.svg`](diagrama_eletrico.svg), the component inventory is in [`lista_componentes.md`](lista_componentes.md), and the observable test cases/results are in [`plano_testes.md`](plano_testes.md). F1 Wi-Fi recovery and F3 sensor failure/recovery passed functionally; precise outage and recovery durations were not timed.
 
