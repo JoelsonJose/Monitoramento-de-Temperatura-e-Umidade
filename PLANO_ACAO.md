@@ -51,5 +51,5 @@ A orientação pede responsáveis e links para commits, mas não determina a dis
 | Qualidade | Cobertura ≥60%, análise estática, revisão de PR e relatório ISO/IEC 25010 | Nicollas | CI e relatório de qualidade |
 | IA | Coletar ≥48 h, avaliar modelo temporal, superar baseline e criar `/predict`/model card | Morgana | Métricas, endpoint e model card |
 | Mobile | Aplicativo, alertas, modo offline e teste SUS com cinco usuários | Morgana / Lucas Ximenes | Aplicativo e relatório SUS |
-| Pesquisa | Validar persona/proposta de valor com usuários | Morgana | Resultados anonimizados |
+| Pesquisa | Entrevistar ≥5 pessoas ou coletar ≥20 respostas; validar duas hipóteses (pomar e pós-colheita), jornada e proposta de valor | Morgana | Respostas anônimas e síntese documentada; pesquisa documental preliminar em `docs/ux/pesquisa_previa.md` não substitui coleta primária |
 | Documentação e release | Completar documentação, vídeo ≤5 min e tag `v1.0` | Thayanne / João César / Morgana | Repositório, vídeo e release |

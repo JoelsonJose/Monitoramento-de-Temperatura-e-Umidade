@@ -62,8 +62,9 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 - `docs/lista_componentes.md` — bill of materials and known quantities
 - `docs/plano_testes.md` — preview test cases and evidence
 - `docs/ia/baseline_previa.md` — preview forecasting problem and measured persistence baseline
-- `docs/ux/pesquisa_previa.md` — interview guide; real responses still need to be collected
+- `docs/ux/pesquisa_previa.md` — documentary research, provisional mango-use personas, and interview guide; primary user responses still need to be collected
 - `docs/pitch/opening_english.md` — two-minute English opening script assigned to Nicollas
+- `docs/pitch/guia_apresentacao_pt.md` — Portuguese speaking notes for the mixed-language deck requested by the team
 - `REQUISITOS_UC.md` — evidence matrix for the eight course units
 - `RESILIENCIA.md` — resilience requirements and test record
 - `PLANO_ACAO.md` — open work, owners, and evidence to collect

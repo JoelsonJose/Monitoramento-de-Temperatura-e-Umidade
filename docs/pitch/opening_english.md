@@ -2,17 +2,18 @@
 
 **Speaker: Nicollas**
 
-Good morning. We are presenting our IoT temperature and humidity monitoring prototype. It uses one DHT11 sensor connected to an ESP32-C3. The board samples the environment every five seconds, shows local status, and sends authenticated readings to our public Node.js API, which stores them in PostgreSQL. The web dashboard reads the latest measurement and device contact time.
+Good morning. Our project explores IoT monitoring of temperature and relative humidity in two mango contexts: an orchard and postharvest handling. These environmental conditions matter in mango production and storage, but this prototype only measures them; it does not diagnose plant disease or control a storage room.
 
-After configuring the device for the public service, we observed the board connect to Wi-Fi and return two HTTP 201 responses from the API. The public health endpoint also reported that the database was connected. During the demonstration, we will refresh the dashboard and show the latest reading received from the sensor.
+Our documentary research suggests two provisional user profiles: a person responsible for monitoring a mango orchard and a person responsible for a postharvest or storage area. These are hypotheses, not validated personas. We still need interviews with real users. Our value proposition is simple, timestamped readings and a history that let the responsible person check conditions remotely and notice when measurements stop arriving.
 
-My contribution focuses on software quality and testing. We checked normal sensor readings, invalid sensor data, Wi-Fi loss and recovery, authentication, and device authorization. The API returns HTTP 401 when a protected request has no valid token and HTTP 403 when an authenticated user is not allowed to access a device. Five automated tests cover the main API routes and security behavior, and the latest recorded GitHub Actions runs passed.
+The architecture is a DHT11 sensor connected to an ESP32-C3. The board samples every five seconds, adds a device ID, sequence number, and UTC timestamp, then sends an authenticated reading over HTTPS to our Node.js API. The API stores it in PostgreSQL, and the authenticated web dashboard displays the latest reading and history.
 
-Our prototype currently measures temperature and humidity with a single DHT11 sensor. Some work remains for the final delivery, including an offline buffer, longer reliability measurements, the mobile application, and the final AI model. We will distinguish what is working now from what is still planned.
+During our hardware work, the board connected to Wi-Fi and its Serial Monitor showed two HTTP 201 responses from the public API. We also observed temperature and humidity readings on the local device page. The preview uses one sensor and one monitored point at a time, so orchard and postharvest measurements are alternative use cases, not simultaneous coverage.
 
-Thank you. We will now demonstrate the prototype.
+My contribution focuses on software quality and testing. Our current next steps include validating the user profiles through interviews and completing the mobile prototype. We will now show the working device and the evidence we have collected.
 
 ## Presenter notes
 
-- The orientation requires a two-minute opening in English. Keep the English slides (up to six) on screen during the pitch.
-- The rest of the project interface and supporting documentation is in Portuguese, except the README and API documentation, which the orientation also requires in English.
+- This is the only spoken section that must be delivered in English for the preview: a two-minute pitch covering the problem, provisional user profiles, value proposition, and architecture.
+- The team's requested deck format is an English opening slide followed by Portuguese slides. Note: Table 11 also says “pitch slides (in English, maximum 6),” which may require every slide to be in English; confirm that the mixed-language deck is accepted.
+- The two user profiles are based on documentary research only; do not describe them as interview-validated.
