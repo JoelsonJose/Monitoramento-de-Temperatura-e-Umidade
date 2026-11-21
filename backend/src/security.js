@@ -26,9 +26,14 @@ export function verifyToken(token, secret, nowSeconds = Math.floor(Date.now() / 
 }
 
 export function validReading(body) {
-  return body && typeof body.device_id === 'string' && body.device_id.length > 0 && body.device_id.length <= 80 &&
+  const base = body && typeof body.device_id === 'string' && body.device_id.length > 0 && body.device_id.length <= 80 &&
     Number.isSafeInteger(body.sequence) && body.sequence >= 0 &&
     typeof body.timestamp === 'string' && Number.isFinite(Date.parse(body.timestamp)) &&
     Number.isFinite(body.temperature_c) && body.temperature_c >= -40 && body.temperature_c <= 80 &&
     Number.isFinite(body.humidity_percent) && body.humidity_percent >= 0 && body.humidity_percent <= 100;
+  if (!base) return false;
+  if (body.luminosity_lux !== undefined && body.luminosity_lux !== null) {
+    if (!Number.isFinite(body.luminosity_lux) || body.luminosity_lux < 0) return false;
+  }
+  return true;
 }
