@@ -263,6 +263,21 @@
     .btn-edit:hover{background:var(--green);color:#fff;border-color:var(--green)}
     .btn-del{border:1px solid #f4d0cd;background:#fff;color:var(--red);padding:5px 11px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;transition:all .15s;margin-left:4px}
     .btn-del:hover{background:var(--red);color:#fff;border-color:var(--red)}
+    .btn-colher{border:1px solid #8ecaa3;background:#e9f6ee;color:#186136;padding:5px 11px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;transition:all .15s;margin-left:4px}
+    .btn-colher:hover{background:var(--green);color:#fff;border-color:var(--green)}
+    .colhido-tag{display:inline-flex;align-items:center;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:750;background:#e5f2f1;color:#1e5a55;border:1px solid #bce1dd;margin-right:4px}
+
+    /* Tabela de Lotes no Dashboard */
+    .dash-lotes-table-wrap{background:#fff;border:1px solid #dfe6db;border-radius:16px;overflow:hidden;margin-bottom:20px;box-shadow:0 4px 16px #183c2c06}
+    .dash-lotes-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+    .dash-lotes-table th{background:#f6f9f3;padding:12px 16px;color:#506558;font-weight:750;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8dc}
+    .dash-lotes-table td{padding:13px 16px;border-bottom:1px solid #edf2e8;vertical-align:middle}
+    .dash-lotes-table tbody tr{cursor:pointer;transition:all .15s ease}
+    .dash-lotes-table tbody tr:hover{background:#f8faf6}
+    .dash-lotes-table tbody tr.selected{background:#edf7ef;outline:2px solid var(--green);outline-offset:-2px}
+    .dash-lotes-table tbody tr:last-child td{border-bottom:0}
+    .dash-lotes-empty{padding:26px;text-align:center;color:#7a8a81;font-size:13px}
+    .inspecao-separator{margin:16px 0 14px;padding-top:14px;border-top:1px dashed #dbe5d7}
 
     /* Paginação */
     .crud-pagination{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-top:1px solid #e8ede4;flex-wrap:wrap;gap:12px}
@@ -476,9 +491,8 @@
           </div>
           <div class="selo-controls">
             <select class="lote-select" id="lote-select" aria-label="Selecionar Lote"></select>
-            <button class="action-btn" id="toggle-etapa-btn" type="button" title="Mover ou avançar etapa do lote">Avançar Etapa</button>
-            <button class="action-btn" id="audit-btn" type="button">Recalcular</button>
-            <button class="action-btn primary-btn" id="open-new-lote-modal" type="button">+ Novo Lote</button>
+            <button class="action-btn" id="toggle-etapa-btn" type="button" title="Registrar colheita ou alternar etapa do lote">🌾 Colher Lote</button>
+            <button class="action-btn" id="audit-btn" type="button">🔄 Recalcular</button>
           </div>
         </div>
 
@@ -488,6 +502,43 @@
           <button class="filter-pill selo-highlight" data-filter="selo" type="button">🏅 Lotes com Selo (<span id="count-selo">0</span>)</button>
           <button class="filter-pill" data-filter="reprovado" type="button">❌ Reprovados (<span id="count-reprovados">0</span>)</button>
           <button class="filter-pill" data-filter="analise" type="button">⏳ Em Análise (<span id="count-analise">0</span>)</button>
+        </div>
+
+        <!-- LISTA VISUAL DE TODOS OS LOTES NO DASHBOARD (Preenchida Conforme o Filtro Acima) -->
+        <div class="dash-lotes-table-wrap">
+          <div style="overflow-x:auto">
+            <table class="dash-lotes-table">
+              <thead>
+                <tr>
+                  <th style="min-width:180px">Lote / Identificação</th>
+                  <th>Variedade</th>
+                  <th>Etapa Atual</th>
+                  <th>Etapa 1: Pomar</th>
+                  <th>Etapa 2: Câmara Fria</th>
+                  <th>Selo de Qualidade</th>
+                  <th style="text-align:right">Inspeção Detalhada</th>
+                </tr>
+              </thead>
+              <tbody id="dash-lotes-tbody">
+                <!-- Preenchido via JavaScript com TODOS os lotes do filtro -->
+              </tbody>
+            </table>
+          </div>
+          <div class="dash-lotes-empty hidden" id="dash-lotes-empty">
+            Nenhum lote encontrado nesta categoria de filtro.
+          </div>
+        </div>
+
+        <div class="inspecao-separator">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div>
+              <span class="eyebrow">Auditoria Minuciosa</span>
+              <h3 style="font-size:17px;margin:3px 0 0;letter-spacing:-.02em;color:var(--ink)">
+                Inspeção do Lote Selecionado: <span id="audit-lote-title" style="color:var(--green)">—</span>
+              </h3>
+            </div>
+            <span style="font-size:12px;color:var(--muted)">Clique em qualquer lote na tabela acima para inspecionar</span>
+          </div>
         </div>
 
         <div class="selo-grid">
@@ -964,6 +1015,86 @@
     });
   });
 
+  function renderDashboardLotesTable(list){
+    const tbody=$('#dash-lotes-tbody');
+    const empty=$('#dash-lotes-empty');
+    if(!tbody)return;
+    if(!list.length){
+      tbody.innerHTML='';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    tbody.innerHTML=list.map(l=>{
+      const isSelected=l.id_lote===selectedLoteId;
+
+      // Pomar
+      const pVal=Number(l.percentual_pomar||0).toFixed(1);
+      const isPomarOk=pVal>=70.0;
+      const pomarBadge=isPomarOk
+        ? `<span class="stage-status-tag ok">Aprovado (${pVal}%)</span>`
+        : `<span class="stage-status-tag fail">Reprovado (${pVal}%)</span>`;
+
+      // Estoque
+      const eVal=Number(l.percentual_estoque||0).toFixed(1);
+      let estoqueBadge;
+      if(l.etapa_atual==='pomar' && Number(l.percentual_estoque||0)===0){
+        estoqueBadge=`<span class="stage-status-tag wait">Aguardando Colheita</span>`;
+      }else if(eVal>=70.0){
+        estoqueBadge=`<span class="stage-status-tag ok">Aprovado (${eVal}%)</span>`;
+      }else{
+        estoqueBadge=`<span class="stage-status-tag fail">Reprovado (${eVal}%)</span>`;
+      }
+
+      // Selo
+      let seloBadge;
+      if(l.status_selo==='aprovado'){
+        seloBadge=`<span class="selo-status-badge approved">🏅 Selo Concedido</span>`;
+      }else if(l.status_selo==='reprovado'){
+        seloBadge=`<span class="selo-status-badge rejected">❌ Não Concedido</span>`;
+      }else{
+        seloBadge=`<span class="selo-status-badge pending">⏳ Em Análise</span>`;
+      }
+
+      // Etapa
+      const etapaBadge=l.etapa_atual==='pomar'
+        ? `<span class="etapa-pill pomar">🌿 Pomar (No pé)</span>`
+        : `<span class="etapa-pill estoque" title="Colhido em ${formatDateShort(l.data_colheita)}">❄️ Câm. Fria (Colhido)</span>`;
+
+      return `
+        <tr class="${isSelected?'selected':''}" data-id="${l.id_lote}">
+          <td>
+            <span class="lote-id-badge">${l.codigo_lote}</span>
+            <div class="lote-name-cell">${l.nome}</div>
+          </td>
+          <td><strong>${l.variedade||'Tommy Atkins'}</strong></td>
+          <td>${etapaBadge}</td>
+          <td>${pomarBadge}</td>
+          <td>${estoqueBadge}</td>
+          <td>${seloBadge}</td>
+          <td style="text-align:right">
+            <button type="button" class="audit-action-btn" data-id="${l.id_lote}">
+              ${isSelected?'✓ Inspecionando':'🔍 Inspecionar'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      tr.addEventListener('click',()=>{
+        const id=Number(tr.dataset.id);
+        if(id && id!==selectedLoteId){
+          selectedLoteId=id;
+          $('#lote-select').value=id;
+          renderDashboardLotesTable(list);
+          updateSeloCard();
+        }
+      });
+    });
+  }
+
   function applyFilterToSelect(){
     let filtered=lotes;
     if(currentFilter==='selo'){
@@ -973,6 +1104,8 @@
     }else if(currentFilter==='analise'){
       filtered=lotes.filter(l=>l.status_selo==='em_analise');
     }
+
+    renderDashboardLotesTable(filtered);
 
     const select=$('#lote-select');
     if(!filtered.length){
@@ -991,23 +1124,43 @@
     updateSeloCard();
   }
 
-  // Alternar Etapa do Lote
+  // Alternar Etapa do Lote / Colher Manga
   $('#toggle-etapa-btn').addEventListener('click',async()=>{
     if(!selectedLoteId)return;
     const currentLote=lotes.find(l=>l.id_lote===selectedLoteId);
     if(!currentLote)return;
-    const nextEtapa=currentLote.etapa_atual==='pomar'?'estoque':'pomar';
-    try{
-      const res=await fetch(`/api/v1/lotes/${selectedLoteId}`,{
-        method:'PATCH',
-        headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
-        body:JSON.stringify({etapa_atual:nextEtapa})
-      });
-      await readJson(res);
-      await loadLotes();
-      await updateSeloCard();
-    }catch(e){
-      alert('Não foi possível alterar a etapa do lote: '+e.message);
+    const isPomar=currentLote.etapa_atual==='pomar';
+
+    if(isPomar){
+      const confirmColheita=confirm(`Confirma a colheita do lote "${currentLote.codigo_lote} - ${currentLote.nome}"?\n\nEle será movido para a Câmara Fria e as próximas leituras da ESP32 serão computadas para a Etapa 2 (Câmara Fria/Estoque).`);
+      if(!confirmColheita)return;
+      try{
+        const res=await fetch(`/api/v1/lotes/${selectedLoteId}/colher`,{
+          method:'POST',
+          headers:{authorization:`Bearer ${token}`}
+        });
+        await readJson(res);
+        await loadLotes();
+        await updateSeloCard();
+        showNotice(`Lote ${currentLote.codigo_lote} colhido com sucesso! Agora em monitoramento na Câmara Fria.`, false);
+      }catch(e){
+        alert('Não foi possível registrar a colheita: '+e.message);
+      }
+    }else{
+      const confirmRevert=confirm(`Deseja retornar o lote "${currentLote.codigo_lote}" para o Pomar?`);
+      if(!confirmRevert)return;
+      try{
+        const res=await fetch(`/api/v1/lotes/${selectedLoteId}`,{
+          method:'PATCH',
+          headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
+          body:JSON.stringify({etapa_atual:'pomar'})
+        });
+        await readJson(res);
+        await loadLotes();
+        await updateSeloCard();
+      }catch(e){
+        alert('Não foi possível alterar a etapa: '+e.message);
+      }
     }
   });
 
@@ -1017,6 +1170,10 @@
   $('#lote-select').addEventListener('change',event=>{
     if(event.target.value){
       selectedLoteId=Number(event.target.value);
+      // Atualiza destaque na tabela
+      document.querySelectorAll('#dash-lotes-tbody tr').forEach(tr=>{
+        tr.classList.toggle('selected', Number(tr.dataset.id)===selectedLoteId);
+      });
       updateSeloCard();
     }
   });
@@ -1049,13 +1206,21 @@
 
       $('#lote-display-name').textContent=`${audit.codigo_lote} · ${audit.nome}`;
       $('#lote-variedade').textContent=audit.variedade;
+      const titleSpan = $('#audit-lote-title');
+      if(titleSpan) titleSpan.textContent=`${audit.codigo_lote} · ${audit.nome}`;
       
       const isPomar=audit.etapa_atual==='pomar';
       const pill=$('#lote-stage-pill');
-      pill.textContent=isPomar?'Pomar (Cultivo no Pé)':'Câmara Fria (Estoque)';
+      pill.textContent=isPomar?'Pomar (Cultivo no Pé)':'Câmara Fria (Colhido)';
       pill.className=`stage-pill ${isPomar?'pomar':'estoque'}`;
-      $('#toggle-etapa-btn').textContent=isPomar?'Colher e Mover para Câmara Fria':'Retornar ao Pomar';
+      $('#toggle-etapa-btn').textContent=isPomar?'🌾 Colher Lote (Mover para Câmara Fria)':'↩️ Retornar ao Pomar';
+      $('#toggle-etapa-btn').className=isPomar?'action-btn primary-btn':'action-btn';
       $('#crit-stage-name').textContent=isPomar?'Pomar':'Câmara Fria';
+
+      // Sincroniza destaque na tabela do Dashboard
+      document.querySelectorAll('#dash-lotes-tbody tr').forEach(tr=>{
+        tr.classList.toggle('selected', Number(tr.dataset.id)===selectedLoteId);
+      });
 
       const inicio=formatDateShort(audit.periodo.data_inicio);
       const fim=formatDateShort(audit.periodo.data_fim);
@@ -1372,6 +1537,11 @@
         : `<span class="etapa-pill estoque">❄️ Câm. Fria</span>`;
       const p1 = l.percentual_pomar != null ? `<span class="pct-cell ${crudPctClass(l.percentual_pomar)}">${Number(l.percentual_pomar).toFixed(0)}%</span>` : `<span class="pct-cell wait">—</span>`;
       const p2 = l.percentual_estoque != null && l.percentual_estoque > 0 ? `<span class="pct-cell ${crudPctClass(l.percentual_estoque)}">${Number(l.percentual_estoque).toFixed(0)}%</span>` : `<span class="pct-cell wait">—</span>`;
+      const isPomar = l.etapa_atual === 'pomar';
+      const acaoColheita = isPomar
+        ? `<button class="btn-colher" onclick="crudColherLote(${l.id_lote},'${(l.codigo_lote||'').replace(/'/g,"\\'")} – ${(l.nome||'').replace(/'/g,"\\'")}')" title="Colher e mover para Câmara Fria">🌾 Colher</button>`
+        : `<span class="colhido-tag" title="Colhido em ${l.data_colheita ? l.data_colheita.slice(0,10) : 'Estoque'}">✓ Colhido</span>`;
+
       return `<tr>
         <td class="col-id"><span class="id-num">${l.id_lote}</span></td>
         <td class="col-cod"><span class="cod-mono">${l.codigo_lote || '—'}</span></td>
@@ -1381,7 +1551,8 @@
         <td class="col-estoque">${p2}</td>
         <td class="col-selo">${seloHtml}</td>
         <td class="col-acoes">
-          <button class="btn-edit" onclick="crudOpenEdit(${l.id_lote})" title="Editar lote">✏️ Editar</button>
+          ${acaoColheita}
+          <button class="btn-edit" onclick="crudOpenEdit(${l.id_lote})" title="Editar lote">✏️</button>
           <button class="btn-del" onclick="crudOpenDelete(${l.id_lote},'${(l.codigo_lote||'').replace(/'/g,"\\'")} – ${(l.nome||'').replace(/'/g,"\\'")}')" title="Excluir lote">🗑️</button>
         </td>
       </tr>`;
@@ -1442,6 +1613,29 @@
   $('#crud-modal-cancel').addEventListener('click', crudCloseModal);
   $('#modal-crud-lote').addEventListener('click', e => { if(e.target === $('#modal-crud-lote')) crudCloseModal(); });
 
+  $('#cf-etapa').addEventListener('change', () => {
+    if ($('#cf-etapa').value === 'estoque' && !$('#cf-colheita').value) {
+      $('#cf-colheita').value = new Date().toISOString().slice(0,16);
+    }
+  });
+
+  window.crudColherLote = async function(id, label) {
+    const ok = confirm(`Confirma a colheita do lote "${label}"?\n\nEle será movido para a Câmara Fria/Estoque e todas as novas leituras do sensor serão computadas para a Etapa 2.`);
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/v1/lotes/${id}/colher`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}` }
+      });
+      await readJson(res);
+      await crudLoadAndRender();
+      await loadLotes();
+      showNotice(`Lote "${label}" colhido com sucesso! Agora em monitoramento na Câmara Fria.`, false);
+    } catch(err) {
+      alert('Erro ao registrar colheita: ' + err.message);
+    }
+  };
+
   $('#crud-lote-form').addEventListener('submit', async e => {
     e.preventDefault();
     const btn = $('#crud-modal-save');
@@ -1466,6 +1660,7 @@
       await readJson(res);
       crudCloseModal();
       await crudLoadAndRender();
+      await loadLotes();
     } catch(err) {
       alert('Erro ao salvar: ' + err.message);
     } finally {
@@ -1498,6 +1693,7 @@
       $('#modal-confirm-del').classList.remove('open');
       crudDeleteId = null;
       await crudLoadAndRender();
+      await loadLotes();
     } catch(err) {
       alert('Erro ao excluir: ' + err.message);
     } finally {
