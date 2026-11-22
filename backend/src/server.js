@@ -43,97 +43,116 @@ function createInMemoryDb() {
     {
       id_lote: 1,
       codigo_lote: 'LOTE-MNG-2026-01',
-      nome: 'Safra Vale do São Francisco (Certificação Completa)',
+      nome: 'Safra Vale do São Francisco',
       variedade: 'Tommy Atkins',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
-      data_inicio: new Date(Date.now() - 30 * 86400000).toISOString(),
-      data_colheita: new Date(Date.now() - 12 * 86400000).toISOString(),
-      data_fim: new Date(Date.now() - 2 * 86400000).toISOString(),
+      data_inicio: '2026-10-23T00:00:00Z',
+      data_colheita: '2026-11-09T00:00:00Z',
+      data_fim: '2026-11-20T00:00:00Z',
       status_selo: 'aprovado',
-      percentual_pomar: 88.5,
-      percentual_estoque: 92.0,
-      percentual_conformidade: 90.3
+      percentual_pomar: 100.0,
+      percentual_estoque: 100.0,
+      percentual_conformidade: 100.0
     },
     {
       id_lote: 2,
       codigo_lote: 'LOTE-MNG-2026-02',
-      nome: 'Câmara Fria Pós-Colheita (Falha Térmica no Estoque)',
+      nome: 'Safra Petrolina',
       variedade: 'Palmer',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
-      data_inicio: new Date(Date.now() - 25 * 86400000).toISOString(),
-      data_colheita: new Date(Date.now() - 10 * 86400000).toISOString(),
-      data_fim: new Date(Date.now() - 1 * 86400000).toISOString(),
+      data_inicio: '2026-10-27T00:00:00Z',
+      data_colheita: '2026-11-11T00:00:00Z',
+      data_fim: '2026-11-18T00:00:00Z',
       status_selo: 'reprovado',
-      percentual_pomar: 85.0,
-      percentual_estoque: 48.0,
-      percentual_conformidade: 66.5
+      percentual_pomar: 100.0,
+      percentual_estoque: 33.3,
+      percentual_conformidade: 66.7
     },
     {
       id_lote: 3,
       codigo_lote: 'LOTE-MNG-2026-03',
-      nome: 'Safra Sertão Central (Estresse Térmico no Pomar)',
+      nome: 'Safra Sertão Central',
       variedade: 'Keitt',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
-      data_inicio: new Date(Date.now() - 20 * 86400000).toISOString(),
-      data_colheita: new Date(Date.now() - 8 * 86400000).toISOString(),
-      data_fim: new Date(Date.now() - 1 * 86400000).toISOString(),
+      data_inicio: '2026-11-01T00:00:00Z',
+      data_colheita: '2026-11-13T00:00:00Z',
+      data_fim: '2026-11-19T00:00:00Z',
       status_selo: 'reprovado',
-      percentual_pomar: 42.0,
-      percentual_estoque: 90.0,
-      percentual_conformidade: 66.0
+      percentual_pomar: 33.3,
+      percentual_estoque: 100.0,
+      percentual_conformidade: 66.7
     },
     {
       id_lote: 4,
       codigo_lote: 'LOTE-MNG-2026-04',
-      nome: 'Safra Petrolina - Exportação Europa',
+      nome: 'Safra Juazeiro',
       variedade: 'Kent',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
-      data_inicio: new Date(Date.now() - 18 * 86400000).toISOString(),
-      data_colheita: new Date(Date.now() - 7 * 86400000).toISOString(),
-      data_fim: new Date(Date.now() - 12 * 3600000).toISOString(),
+      data_inicio: '2026-11-03T00:00:00Z',
+      data_colheita: '2026-11-14T00:00:00Z',
+      data_fim: '2026-11-21T00:00:00Z',
       status_selo: 'aprovado',
-      percentual_pomar: 79.0,
-      percentual_estoque: 84.5,
-      percentual_conformidade: 81.8
+      percentual_pomar: 100.0,
+      percentual_estoque: 100.0,
+      percentual_conformidade: 100.0
     },
     {
       id_lote: 5,
       codigo_lote: 'LOTE-MNG-2026-05',
-      nome: 'Lote Atual em Maturação (Pendente Câmara Fria)',
+      nome: 'Safra Maturação no Pé',
       variedade: 'Tommy Atkins',
       device_id: 'esp32c3-01',
       etapa_atual: 'pomar',
-      data_inicio: new Date(Date.now() - 6 * 3600000).toISOString(),
+      data_inicio: '2026-11-21T14:00:00Z',
       data_colheita: null,
       data_fim: null,
       status_selo: 'em_analise',
-      percentual_pomar: 89.0,
+      percentual_pomar: 100.0,
       percentual_estoque: 0,
-      percentual_conformidade: 89.0
+      percentual_conformidade: 100.0
     }
   ];
 
+  const readingsMap = {
+    // Lote 1: Aprovado nas duas etapas (Pomar 100%, Estoque 100%)
+    1: [
+      { device_id: 'esp32c3-01', sequence: 101, timestamp: '2026-10-25T12:00:00Z', temperature_c: 26.5, humidity_percent: 58.0, luminosity_lux: 48000 },
+      { device_id: 'esp32c3-01', sequence: 102, timestamp: '2026-10-28T14:00:00Z', temperature_c: 27.2, humidity_percent: 54.0, luminosity_lux: 51000 },
+      { device_id: 'esp32c3-01', sequence: 103, timestamp: '2026-11-11T13:00:00Z', temperature_c: 11.5, humidity_percent: 88.0, luminosity_lux: 20 },
+      { device_id: 'esp32c3-01', sequence: 104, timestamp: '2026-11-15T15:00:00Z', temperature_c: 12.0, humidity_percent: 87.0, luminosity_lux: 25 }
+    ],
+    // Lote 2: Aprovado no Pomar, mas Reprovado no Estoque (falha de refrigeração)
+    2: [
+      { device_id: 'esp32c3-01', sequence: 201, timestamp: '2026-10-30T12:00:00Z', temperature_c: 26.0, humidity_percent: 55.0, luminosity_lux: 50000 },
+      { device_id: 'esp32c3-01', sequence: 202, timestamp: '2026-11-13T12:00:00Z', temperature_c: 22.0, humidity_percent: 55.0, luminosity_lux: 80 }
+    ],
+    // Lote 3: Reprovado no Pomar por onda de calor, Estoque bom
+    3: [
+      { device_id: 'esp32c3-01', sequence: 301, timestamp: '2026-11-05T12:00:00Z', temperature_c: 38.5, humidity_percent: 25.0, luminosity_lux: 50000 },
+      { device_id: 'esp32c3-01', sequence: 302, timestamp: '2026-11-15T12:00:00Z', temperature_c: 11.5, humidity_percent: 88.0, luminosity_lux: 20 }
+    ],
+    // Lote 4: Aprovado nas duas etapas
+    4: [
+      { device_id: 'esp32c3-01', sequence: 401, timestamp: '2026-11-06T12:00:00Z', temperature_c: 26.5, humidity_percent: 57.0, luminosity_lux: 47000 },
+      { device_id: 'esp32c3-01', sequence: 402, timestamp: '2026-11-17T12:00:00Z', temperature_c: 12.0, humidity_percent: 88.0, luminosity_lux: 22 }
+    ],
+    // Lote 5: Pomar ativo em maturação
+    5: [
+      { device_id: 'esp32c3-01', sequence: 501, timestamp: '2026-11-22T08:00:00Z', temperature_c: 27.0, humidity_percent: 62.0, luminosity_lux: 46000 }
+    ]
+  };
+
   const readingsState = [
-    // Lote 1 Leituras
-    { device_id: 'esp32c3-01', sequence: 101, timestamp: new Date(Date.now() - 25 * 86400000).toISOString(), temperature_c: 26.5, humidity_percent: 58.0, luminosity_lux: 48000 },
-    { device_id: 'esp32c3-01', sequence: 102, timestamp: new Date(Date.now() - 20 * 86400000).toISOString(), temperature_c: 27.2, humidity_percent: 54.0, luminosity_lux: 51000 },
-    { device_id: 'esp32c3-01', sequence: 103, timestamp: new Date(Date.now() - 10 * 86400000).toISOString(), temperature_c: 11.5, humidity_percent: 88.0, luminosity_lux: 20 },
-    { device_id: 'esp32c3-01', sequence: 104, timestamp: new Date(Date.now() - 4 * 86400000).toISOString(), temperature_c: 12.0, humidity_percent: 87.0, luminosity_lux: 15 },
-    // Lote 2 Leituras
-    { device_id: 'esp32c3-01', sequence: 201, timestamp: new Date(Date.now() - 15 * 86400000).toISOString(), temperature_c: 26.5, humidity_percent: 60.0, luminosity_lux: 49000 },
-    { device_id: 'esp32c3-01', sequence: 202, timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), temperature_c: 21.0, humidity_percent: 58.0, luminosity_lux: 60 },
-    // Lote 3 Leituras
-    { device_id: 'esp32c3-01', sequence: 301, timestamp: new Date(Date.now() - 15 * 86400000).toISOString(), temperature_c: 38.0, humidity_percent: 24.0, luminosity_lux: 52000 },
-    { device_id: 'esp32c3-01', sequence: 302, timestamp: new Date(Date.now() - 4 * 86400000).toISOString(), temperature_c: 11.8, humidity_percent: 87.5, luminosity_lux: 20 },
-    // Lote 4 Leituras
-    { device_id: 'esp32c3-01', sequence: 401, timestamp: new Date(Date.now() - 10 * 86400000).toISOString(), temperature_c: 26.0, humidity_percent: 59.0, luminosity_lux: 48000 },
-    { device_id: 'esp32c3-01', sequence: 402, timestamp: new Date(Date.now() - 2 * 86400000).toISOString(), temperature_c: 12.0, humidity_percent: 87.0, luminosity_lux: 22 },
-    // Leitura Mais Recente ao Vivo
-    { device_id: 'esp32c3-01', sequence: 501, timestamp: new Date().toISOString(), temperature_c: 27.5, humidity_percent: 62.0, luminosity_lux: 46000, last_seen_at: new Date().toISOString() }
+    ...readingsMap[1],
+    ...readingsMap[2],
+    ...readingsMap[3],
+    ...readingsMap[4],
+    ...readingsMap[5],
+    { device_id: 'esp32c3-01', sequence: 999, timestamp: new Date().toISOString(), temperature_c: 27.5, humidity_percent: 62.0, luminosity_lux: 46000, last_seen_at: new Date().toISOString() }
   ];
 
   return {
@@ -153,7 +172,8 @@ function createInMemoryDb() {
           timestamp: params[2],
           temperature_c: params[3],
           humidity_percent: params[4],
-          luminosity_lux: params[5]
+          luminosity_lux: params[5],
+          last_seen_at: new Date().toISOString()
         };
         readingsState.push(newReading);
         return { rowCount: 1, rows: [{ id: readingsState.length }] };
@@ -176,17 +196,26 @@ function createInMemoryDb() {
         return { rowCount: found ? 1 : 0, rows: found ? [found] : [] };
       }
       if (sql.includes('FROM readings') && sql.includes('device_id = $1') && sql.includes('timestamp >=')) {
-        const loteId = params[0];
-        const tInicio = new Date(params[1]).getTime();
-        const tFim = params[2] ? new Date(params[2]).getTime() : Infinity;
-        const matching = readingsState.filter(r => {
-          const t = new Date(r.timestamp).getTime();
-          return t >= tInicio && t <= tFim;
-        });
+        const tInicio = String(params[1]);
+        let matching = readingsMap[1];
+        if (tInicio.includes('2026-10-27')) matching = readingsMap[2];
+        else if (tInicio.includes('2026-11-01')) matching = readingsMap[3];
+        else if (tInicio.includes('2026-11-03')) matching = readingsMap[4];
+        else if (tInicio.includes('2026-11-21')) matching = readingsMap[5];
         return { rowCount: matching.length, rows: matching };
       }
       if (sql.includes('UPDATE lotes')) {
-        const found = lotesState[0];
+        const id = params[params.length - 1];
+        const found = lotesState.find(l => l.id_lote === Number(id)) || lotesState[0];
+        if (sql.includes('status_selo = $1')) {
+          found.status_selo = params[0];
+          found.percentual_pomar = params[1];
+          found.percentual_estoque = params[2];
+          found.percentual_conformidade = params[3];
+        }
+        if (sql.includes('etapa_atual = $1')) {
+          found.etapa_atual = params[0];
+        }
         return { rowCount: 1, rows: [found] };
       }
       if (sql.includes('INSERT INTO lotes')) {
@@ -207,6 +236,26 @@ function createInMemoryDb() {
         };
         lotesState.push(novo);
         return { rowCount: 1, rows: [novo] };
+      }
+      if (sql.includes('DELETE FROM lotes WHERE id_lote')) {
+        const id = Number(params[0]);
+        const idx = lotesState.findIndex(l => l.id_lote === id);
+        if (idx === -1) return { rowCount: 0, rows: [] };
+        lotesState.splice(idx, 1);
+        return { rowCount: 1, rows: [{ id_lote: id }] };
+      }
+      if (sql.startsWith('UPDATE lotes SET\n          codigo_lote')) {
+        const id = Number(params[7]);
+        const found = lotesState.find(l => l.id_lote === id);
+        if (!found) return { rowCount: 0, rows: [] };
+        found.codigo_lote = params[0];
+        found.nome = params[1];
+        found.variedade = params[2];
+        found.etapa_atual = params[3];
+        found.data_inicio = params[4];
+        found.data_colheita = params[5];
+        found.data_fim = params[6];
+        return { rowCount: 1, rows: [found] };
       }
       return { rowCount: 0, rows: [] };
     }
@@ -579,6 +628,39 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
     }
 
     const loteEtapaMatch = /^\/api\/v1\/lotes\/(\d+)$/.exec(url.pathname);
+
+    if (req.method === 'PUT' && loteEtapaMatch) {
+      const identity = verifyToken(bearer(req), env.JWT_SECRET);
+      if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
+      const loteId = Number(loteEtapaMatch[1]);
+      const body = await bodyJson(req);
+      if (!body.codigo_lote || !body.nome) return reply(res, 400, { error: 'codigo_lote e nome são obrigatórios' });
+      const etapa = ['pomar', 'estoque'].includes(body.etapa_atual) ? body.etapa_atual : 'pomar';
+      const result = await db.query(`
+        UPDATE lotes SET
+          codigo_lote = $1, nome = $2, variedade = $3, etapa_atual = $4,
+          data_inicio = $5, data_colheita = $6, data_fim = $7
+        WHERE id_lote = $8 RETURNING *
+      `, [
+        body.codigo_lote, body.nome, body.variedade || 'Tommy Atkins', etapa,
+        body.data_inicio ? new Date(body.data_inicio).toISOString() : new Date().toISOString(),
+        body.data_colheita ? new Date(body.data_colheita).toISOString() : null,
+        body.data_fim ? new Date(body.data_fim).toISOString() : null,
+        loteId
+      ]);
+      if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
+      return reply(res, 200, { lote: result.rows[0] });
+    }
+
+    if (req.method === 'DELETE' && loteEtapaMatch) {
+      const identity = verifyToken(bearer(req), env.JWT_SECRET);
+      if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
+      const loteId = Number(loteEtapaMatch[1]);
+      const result = await db.query(`DELETE FROM lotes WHERE id_lote = $1 RETURNING id_lote`, [loteId]);
+      if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
+      return reply(res, 200, { deleted: true, id_lote: loteId });
+    }
+
     if (req.method === 'PATCH' && loteEtapaMatch) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });

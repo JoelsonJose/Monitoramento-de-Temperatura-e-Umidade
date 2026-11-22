@@ -55,11 +55,18 @@
     .login-foot{font-size:12px;line-height:1.5;color:#8a978e;text-align:center;margin:18px 0 0}
 
     /* Dashboard */
-    .dashboard-view{min-height:100vh}
+    .dashboard-view,.app-view{min-height:100vh}
     .topbar{height:78px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center;position:sticky;top:0;z-index:20;backdrop-filter:blur(8px)}
     .topbar-inner,.dashboard{width:min(1180px,calc(100% - 48px));margin:0 auto}
-    .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
     .top-actions{display:flex;align-items:center;gap:11px}
+
+    /* Header Navigation Tabs (Alternar entre Dashboard e Gestão de Lotes) */
+    .header-nav{display:flex;align-items:center;gap:5px;background:#edf3eb;padding:4px;border-radius:12px}
+    .nav-tab{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#55695c;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:750;cursor:pointer;transition:all .18s ease}
+    .nav-tab:hover{color:var(--ink);background:#e2ebdf}
+    .nav-tab.active{background:#fff;color:var(--green);box-shadow:0 3px 10px #183c2c12}
+    .nav-tab svg{width:16px;height:16px}
     .connection-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #dcebe0;border-radius:99px;background:#f1f8f2;padding:8px 12px;color:var(--green);font-size:12px;font-weight:750}
     .connection-dot{width:8px;height:8px;border-radius:50%;background:#36a86a;box-shadow:0 0 0 3px #36a86a22}
     .connection-pill.offline{background:var(--red-pale);border-color:#f4d5d1;color:var(--red)}
@@ -170,6 +177,130 @@
     .criterion-bar-fill{height:100%;border-radius:99px;background:var(--green)}
     .criterion-range{font-size:10px;color:#8a9990;line-height:1.3}
 
+    /* Lista Visual de Lotes (Lote | Etapa 1 | Etapa 2 | Selo) */
+    .lotes-list-wrap{background:#fff;border:1px solid #dfe6db;border-radius:16px;overflow:hidden;margin-bottom:22px;box-shadow:0 4px 16px #183c2c06}
+    .lotes-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+    .lotes-table th{background:#f6f9f3;padding:12px 16px;color:#506558;font-weight:750;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8dc}
+    .lotes-table td{padding:13px 16px;border-bottom:1px solid #edf2e8;vertical-align:middle}
+    .lotes-table tbody tr{cursor:pointer;transition:all .15s ease}
+    .lotes-table tbody tr:hover{background:#f8faf6}
+    .lotes-table tbody tr.selected{background:#edf7ef;outline:2px solid var(--green);outline-offset:-2px}
+    .lotes-table tbody tr:last-child td{border-bottom:0}
+
+    .lote-id-badge{display:inline-block;font-weight:800;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#eaf2e7;color:#1d4d33;padding:3px 8px;border-radius:6px;font-size:12px}
+    .lote-name-cell{font-size:12px;color:#6b7c73;margin-top:2px}
+
+    .pct-cell-wrap{display:flex;align-items:center;gap:8px}
+    .pct-number{font-weight:800;font-size:13px;letter-spacing:-.02em}
+    .stage-status-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.03em;display:inline-block}
+    .stage-status-tag.ok{background:#e4f4e8;color:#1a6637;border:1px solid #bce1c7}
+    .stage-status-tag.fail{background:#fee8e6;color:#b33d35;border:1px solid #f4d0cd}
+    .stage-status-tag.wait{background:#ecefe9;color:#65746b;border:1px solid #d8dfd6}
+
+    .selo-status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;font-weight:800;font-size:11px;letter-spacing:.02em}
+    .selo-status-badge.approved{background:#fef5de;color:#9b6505;border:1px solid #fbd888}
+    .selo-status-badge.rejected{background:#fee8e6;color:#b33d35;border:1px solid #f4d0cd}
+    .selo-status-badge.pending{background:#edf2ee;color:#5a6e63;border:1px solid #d8e2da}
+
+    .audit-action-btn{border:1px solid #cfdad0;background:#fff;color:#285e42;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:750;cursor:pointer;transition:all .15s}
+    .audit-action-btn:hover{background:var(--green);color:#fff;border-color:var(--green)}
+    .lotes-empty-message{padding:28px;text-align:center;color:#7a8a81;font-size:13px}
+
+    /* ============================================================
+       CRUD DE LOTES — VIEW SEPARADA
+       ============================================================ */
+    .crud-view{min-height:100vh;display:none}
+    .crud-view.active{display:block}
+    .crud-topbar{height:78px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center;position:sticky;top:0;z-index:20;backdrop-filter:blur(8px)}
+    .crud-topbar-inner{width:min(1180px,calc(100% - 48px));margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .crud-main{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:36px 0 60px}
+    .crud-page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+    .crud-page-head h1{font-size:30px;letter-spacing:-.055em;margin:0 0 4px}
+    .crud-page-head p{margin:0;color:var(--muted);font-size:14px}
+
+    /* Barra de busca + filtro */
+    .crud-toolbar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+    .crud-search{flex:1;min-width:220px;height:42px;border:1px solid #d5dfce;background:#fff;border-radius:10px;padding:0 14px 0 38px;font-size:13px;color:var(--ink);outline:none;transition:border .18s,box-shadow .18s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2374847b' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+    .crud-search:focus{border-color:var(--green);box-shadow:0 0 0 3px #236c4a14}
+    .crud-filter-sel{height:42px;border:1px solid #d5dfce;background:#fff;border-radius:10px;padding:0 12px;font-size:13px;color:var(--ink);outline:none;cursor:pointer}
+    .crud-filter-sel:focus{border-color:var(--green);box-shadow:0 0 0 3px #236c4a14}
+
+    /* Tabela */
+    .crud-table-wrap{background:#fff;border:1px solid #dfe6db;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px #183c2c07}
+    .crud-table{width:100%;border-collapse:collapse;font-size:13px}
+    .crud-table th{background:#f5f8f3;padding:13px 16px;color:#526258;font-weight:750;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e0e8da;white-space:nowrap}
+    .crud-table th:first-child{border-radius:0}
+    .crud-table td{padding:14px 16px;border-bottom:1px solid #edf2e8;vertical-align:middle}
+    .crud-table tbody tr:last-child td{border-bottom:0}
+    .crud-table tbody tr:hover{background:#fafcf8}
+    .crud-table .col-id{width:48px;text-align:center}
+    .crud-table .col-cod{width:170px}
+    .crud-table .col-etapa{width:120px;text-align:center}
+    .crud-table .col-pomar,.crud-table .col-estoque{width:90px;text-align:center}
+    .crud-table .col-selo{width:120px;text-align:center}
+    .crud-table .col-acoes{width:120px;text-align:right;white-space:nowrap}
+
+    .id-num{display:inline-block;width:28px;height:28px;border-radius:8px;background:#eef2ea;color:#3d5543;font-weight:800;font-size:12px;line-height:28px;text-align:center;font-family:ui-monospace,monospace}
+    .cod-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;font-weight:700;color:#1d4d33;background:#eaf2e7;padding:2px 7px;border-radius:6px;display:inline-block}
+    .lote-nome-row{font-size:12px;color:#728079;margin-top:3px}
+    .variedade-tag{display:inline-block;background:#fef5de;color:#9b6505;border:1px solid #fbd888;border-radius:99px;font-size:10px;font-weight:750;padding:1px 7px}
+    
+    .etapa-pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:750}
+    .etapa-pill.pomar{background:#fdf2d8;color:#9b6505;border:1px solid #fbd888}
+    .etapa-pill.estoque{background:#e2f0ed;color:#1a6659;border:1px solid #aad8d1}
+
+    .pct-cell{font-weight:800;font-size:13px}
+    .pct-cell.ok{color:#1b6638}
+    .pct-cell.fail{color:#b33d35}
+    .pct-cell.wait{color:#72837a}
+
+    .selo-badge-sm{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800}
+    .selo-badge-sm.ap{background:#fef5de;color:#9b6505;border:1px solid #fbd888}
+    .selo-badge-sm.rp{background:#fee8e6;color:#b33d35;border:1px solid #f4d0cd}
+    .selo-badge-sm.an{background:#edf2ee;color:#5a6e63;border:1px solid #d8e2da}
+
+    .btn-edit{border:1px solid #cfdad0;background:#fff;color:#285e42;padding:5px 11px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;transition:all .15s;margin-left:4px}
+    .btn-edit:hover{background:var(--green);color:#fff;border-color:var(--green)}
+    .btn-del{border:1px solid #f4d0cd;background:#fff;color:var(--red);padding:5px 11px;border-radius:7px;font-size:11px;font-weight:750;cursor:pointer;transition:all .15s;margin-left:4px}
+    .btn-del:hover{background:var(--red);color:#fff;border-color:var(--red)}
+
+    /* Paginação */
+    .crud-pagination{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-top:1px solid #e8ede4;flex-wrap:wrap;gap:12px}
+    .pagination-info{font-size:12px;color:#7a8a81}
+    .pagination-btns{display:flex;gap:4px}
+    .pg-btn{border:1px solid #d9e3d4;background:#fff;color:#46604f;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:750;cursor:pointer;transition:all .15s;min-width:34px;text-align:center}
+    .pg-btn:hover:not(:disabled){background:#eef4ec;border-color:#bdd1c0}
+    .pg-btn.active{background:var(--green);color:#fff;border-color:var(--green)}
+    .pg-btn:disabled{opacity:.45;cursor:default}
+
+    /* Modal de edição/criação */
+    .modal-lote-crud{position:fixed;inset:0;background:#0d1e1666;backdrop-filter:blur(3px);display:none;place-items:center;z-index:200;padding:20px}
+    .modal-lote-crud.open{display:grid}
+    .modal-lote-crud-card{background:#fff;border-radius:20px;padding:30px;width:min(540px,100%);box-shadow:0 20px 60px #00000028;max-height:90vh;overflow-y:auto}
+    .modal-lote-crud-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+    .modal-lote-crud-head h3{font-size:20px;letter-spacing:-.03em;margin:0}
+    .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .modal-form-grid .span2{grid-column:1/-1}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+    .btn-cancel-modal{border:1px solid #d9e3d4;background:#fff;color:#46604f;border-radius:9px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer}
+    .btn-cancel-modal:hover{background:#eef4ec}
+    .btn-save-modal{border:0;background:var(--green);color:#fff;border-radius:9px;padding:10px 22px;font-size:13px;font-weight:750;cursor:pointer;transition:background .18s}
+    .btn-save-modal:hover{background:var(--green-dark)}
+    .btn-save-modal:disabled{opacity:.6;cursor:wait}
+
+    /* Confirm delete dialog */
+    .modal-confirm{position:fixed;inset:0;background:#0d1e1666;backdrop-filter:blur(3px);display:none;place-items:center;z-index:300;padding:20px}
+    .modal-confirm.open{display:grid}
+    .modal-confirm-card{background:#fff;border-radius:16px;padding:28px;width:min(400px,100%);box-shadow:0 20px 50px #00000022;text-align:center}
+    .modal-confirm-card h3{font-size:17px;letter-spacing:-.03em;margin:0 0 10px}
+    .modal-confirm-card p{font-size:13px;color:var(--muted);margin:0 0 22px;line-height:1.6}
+    .modal-confirm-actions{display:flex;gap:10px;justify-content:center}
+    .btn-confirm-del{border:0;background:var(--red);color:#fff;border-radius:9px;padding:10px 22px;font-size:13px;font-weight:750;cursor:pointer}
+    .btn-confirm-del:hover{background:#9a332c}
+
+    @media(max-width:800px){.crud-table .col-pomar,.crud-table .col-estoque,.crud-table .col-etapa{display:none}.modal-form-grid{grid-template-columns:1fr}}
+    @media(max-width:540px){.crud-table .col-cod{display:none}}
+
     /* Content Grid (Chart + Record) */
     .content-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,.75fr);gap:18px}
     .panel{background:#fff;border:1px solid #ebeee8;border-radius:17px;box-shadow:0 8px 24px #183c2c06}
@@ -256,20 +387,40 @@
     </main>
   </section>
 
-  <!-- VIEW: DASHBOARD -->
-  <section class="dashboard-view hidden" id="dashboard-view">
-    <header class="topbar"><div class="topbar-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M22.8 6.4c-8.7.2-14 4-14 11.4 0 4.8 3.2 8.1 7.8 8.1 6.6 0 10.2-7.1 6.2-19.5Z" fill="#F2A51A"/><path d="M17.1 9.1c.3-3.5 2.3-5.4 6.3-5.6-.6 3.2-2.6 5.1-6.3 5.6Z" fill="#39774A"/><path d="M12 21.8c2.1-5.4 5.8-9 10.2-11.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="brand-name">Manga <span>Trace</span></span></div>
-      <div class="top-actions">
-        <!-- BOTÃO PLUG & PLAY VIA CABO USB -->
-        <button class="action-btn usb-btn" id="usb-connect-btn" type="button" title="Conectar ESP32 diretamente pelo Cabo USB no computador">
-          🔌 Conectar Cabo USB
-        </button>
-        <span class="connection-pill" id="connection-pill"><i class="connection-dot"></i><span id="connection-label">Conectado</span></span>
-        <button class="text-button" id="logout-button" type="button">Sair</button>
-      </div>
-    </div></header>
+  <!-- VIEW PRINCIPAL DA APLICAÇÃO (HEADER UNIFICADO + TELAS) -->
+  <section class="app-view hidden" id="app-view">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M22.8 6.4c-8.7.2-14 4-14 11.4 0 4.8 3.2 8.1 7.8 8.1 6.6 0 10.2-7.1 6.2-19.5Z" fill="#F2A51A"/><path d="M17.1 9.1c.3-3.5 2.3-5.4 6.3-5.6-.6 3.2-2.6 5.1-6.3 5.6Z" fill="#39774A"/><path d="M12 21.8c2.1-5.4 5.8-9 10.2-11.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+          <span class="brand-name">Manga <span>Trace</span></span>
+        </div>
 
+        <!-- ABAS DE NAVEGAÇÃO NO HEADER: DASHBOARD vs GESTÃO DE LOTES -->
+        <nav class="header-nav" aria-label="Navegação da Aplicação">
+          <button class="nav-tab active" id="nav-btn-dashboard" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+            Dashboard
+          </button>
+          <button class="nav-tab" id="nav-btn-lotes" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            Gestão de Lotes
+          </button>
+        </nav>
+
+        <div class="top-actions">
+          <!-- BOTÃO PLUG & PLAY VIA CABO USB -->
+          <button class="action-btn usb-btn" id="usb-connect-btn" type="button" title="Conectar ESP32 diretamente pelo Cabo USB no computador">
+            🔌 Conectar Cabo USB
+          </button>
+          <span class="connection-pill" id="connection-pill"><i class="connection-dot"></i><span id="connection-label">Conectado</span></span>
+          <button class="text-button" id="logout-button" type="button">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- TELA 1: DASHBOARD DE TELEMETRIA & QUALIDADE -->
+    <div id="screen-dashboard">
     <main class="dashboard">
       <div class="welcome-row">
         <div>
@@ -482,36 +633,110 @@
 
       <footer class="dashboard-footer">Manga Trace · Monitoramento IoT & Selo de Qualidade · Atualização a cada 10s</footer>
     </main>
-  </section>
+    </div><!-- FIM #screen-dashboard -->
 
-  <!-- MODAL: NOVO LOTE -->
-  <div class="modal-backdrop hidden" id="modal-lote">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3>Cadastrar Novo Lote de Manga</h3>
-        <button class="modal-close" id="modal-close-btn" type="button">&times;</button>
+    <!-- TELA 2: GESTÃO E CRUD DE LOTES -->
+    <div id="screen-lotes" class="hidden">
+      <main class="crud-main">
+        <div class="crud-page-head">
+          <div>
+            <span class="eyebrow">Gestão de Lotes</span>
+            <h1>Lotes de Manga</h1>
+            <p>Cadastre, edite e acompanhe o histórico e a certificação de todos os lotes.</p>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div id="crud-stats" style="display:flex;gap:10px"></div>
+            <button class="action-btn primary-btn" id="crud-new-btn" type="button">+ Novo Lote</button>
+          </div>
+        </div>
+
+        <div class="crud-toolbar">
+          <input class="crud-search" id="crud-search-input" type="search" placeholder="Buscar por código, nome ou variedade…" autocomplete="off">
+          <select class="crud-filter-sel" id="crud-status-filter">
+            <option value="">Todos os status</option>
+            <option value="aprovado">🏅 Com Selo</option>
+            <option value="reprovado">❌ Reprovados</option>
+            <option value="em_analise">⏳ Em Análise</option>
+          </select>
+          <select class="crud-filter-sel" id="crud-etapa-filter">
+            <option value="">Todas as etapas</option>
+            <option value="pomar">Pomar</option>
+            <option value="estoque">Câmara Fria</option>
+          </select>
+        </div>
+
+        <div class="crud-table-wrap">
+          <table class="crud-table" id="crud-table">
+            <thead>
+              <tr>
+                <th class="col-id">#</th>
+                <th class="col-cod">Código</th>
+                <th>Nome / Variedade</th>
+                <th class="col-etapa">Etapa</th>
+                <th class="col-pomar">Pomar</th>
+                <th class="col-estoque">Câm. Fria</th>
+                <th class="col-selo">Selo</th>
+                <th class="col-acoes">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="crud-tbody">
+              <tr><td colspan="8" class="lotes-empty-message">Carregando lotes…</td></tr>
+            </tbody>
+          </table>
+          <div class="crud-pagination" id="crud-pagination" style="display:none">
+            <span class="pagination-info" id="crud-pag-info"></span>
+            <div class="pagination-btns" id="crud-pag-btns"></div>
+          </div>
+        </div>
+      </main>
+    </div><!-- FIM #screen-lotes -->
+  </section><!-- FIM #app-view -->
+
+  <!-- Modal CRUD: Criar / Editar Lote -->
+  <div class="modal-lote-crud" id="modal-crud-lote">
+    <div class="modal-lote-crud-card">
+      <div class="modal-lote-crud-head">
+        <h3 id="crud-modal-title">Novo Lote</h3>
+        <button class="modal-close" id="crud-modal-close" type="button">&times;</button>
       </div>
-      <form id="new-lote-form">
-        <label class="field"><span>Código do Lote</span><input name="codigo_lote" placeholder="Ex: LOTE-MNG-2026-06" required></label>
-        <label class="field"><span>Nome / Descrição</span><input name="nome" placeholder="Ex: Safra Juazeiro - Bloco C" required></label>
-        <label class="field"><span>Variedade</span>
-          <select name="variedade">
-            <option value="Tommy Atkins">Tommy Atkins</option>
-            <option value="Palmer">Palmer</option>
-            <option value="Keitt">Keitt</option>
-            <option value="Kent">Kent</option>
-            <option value="Haden">Haden</option>
-          </select>
-        </label>
-        <label class="field"><span>Etapa Inicial</span>
-          <select name="etapa_atual">
-            <option value="pomar">Pomar (Cultivo e Maturação no Pé)</option>
-            <option value="estoque">Estoque (Câmara Fria)</option>
-          </select>
-        </label>
-        <label class="field"><span>Data de Início</span><input type="datetime-local" name="data_inicio" id="modal-data-inicio"></label>
-        <button class="primary" type="submit" style="margin-top:10px">Salvar Lote</button>
+      <form id="crud-lote-form" autocomplete="off">
+        <input type="hidden" id="crud-edit-id">
+        <div class="modal-form-grid">
+          <label class="field span2"><span>Código do Lote *</span><input id="cf-codigo" placeholder="LOTE-MNG-2026-06" required></label>
+          <label class="field span2"><span>Nome / Descrição *</span><input id="cf-nome" placeholder="Safra Juazeiro – Bloco C" required></label>
+          <label class="field"><span>Variedade</span>
+            <select id="cf-variedade">
+              <option>Tommy Atkins</option><option>Palmer</option><option>Keitt</option><option>Kent</option><option>Haden</option>
+            </select>
+          </label>
+          <label class="field"><span>Etapa Atual</span>
+            <select id="cf-etapa">
+              <option value="pomar">Pomar</option>
+              <option value="estoque">Câmara Fria</option>
+            </select>
+          </label>
+          <label class="field"><span>Data de Início</span><input type="datetime-local" id="cf-inicio"></label>
+          <label class="field"><span>Data de Colheita</span><input type="datetime-local" id="cf-colheita"></label>
+          <label class="field span2"><span>Data de Fim / Encerramento</span><input type="datetime-local" id="cf-fim"></label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel-modal" type="button" id="crud-modal-cancel">Cancelar</button>
+          <button class="btn-save-modal" type="submit" id="crud-modal-save">Salvar Lote</button>
+        </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Confirmação de Exclusão -->
+  <div class="modal-confirm" id="modal-confirm-del">
+    <div class="modal-confirm-card">
+      <div style="font-size:38px;margin-bottom:12px">🗑️</div>
+      <h3>Excluir este lote?</h3>
+      <p id="confirm-del-desc">Esta ação não pode ser desfeita. Todos os dados do lote serão removidos permanentemente.</p>
+      <div class="modal-confirm-actions">
+        <button class="btn-cancel-modal" id="confirm-del-cancel" type="button">Cancelar</button>
+        <button class="btn-confirm-del" id="confirm-del-ok" type="button">Sim, excluir</button>
+      </div>
     </div>
   </div>
 
@@ -530,7 +755,11 @@
 
   const $=selector=>document.querySelector(selector);
   const loginView=$('#login-view');
-  const dashboardView=$('#dashboard-view');
+  const appView=$('#app-view');
+  const screenDashboard=$('#screen-dashboard');
+  const screenLotes=$('#screen-lotes');
+  const navBtnDash=$('#nav-btn-dashboard');
+  const navBtnLotes=$('#nav-btn-lotes');
   const loginStatus=$('#login-status');
   const loginButton=$('#login-button');
   const connectionPill=$('#connection-pill');
@@ -588,7 +817,7 @@
   function showLogin(message='',isError=false){
     if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
     token='';
-    dashboardView.classList.add('hidden');
+    appView.classList.add('hidden');
     loginView.classList.remove('hidden');
     loginStatus.textContent=message||'Acesso restrito à equipe do projeto.';
     loginStatus.classList.toggle('error',isError);
@@ -611,11 +840,14 @@
       const body=await readJson(response);
       token=body.access_token;
       loginView.classList.add('hidden');
-      dashboardView.classList.remove('hidden');
-      await loadLotes();
-      await refreshDashboard();
+      appView.classList.remove('hidden');
+      switchScreen('dashboard');
       if(refreshTimer)clearInterval(refreshTimer);
-      refreshTimer=setInterval(()=>refreshDashboard(),10000);
+      refreshTimer=setInterval(()=>{
+        if(!screenDashboard.classList.contains('hidden')){
+          refreshDashboard();
+        }
+      },10000);
     }catch(error){
       loginStatus.textContent=error.message||friendlyError();
       loginStatus.classList.add('error');
@@ -749,8 +981,7 @@
     }
 
     select.innerHTML=filtered.map(l=>{
-      const badgeIcon=l.status_selo==='aprovado'?'[🏅 SELO APROVADO]':(l.status_selo==='reprovado'?'[❌ REPROVADO]':'[⏳ EM ANÁLISE]');
-      return `<option value="${l.id_lote}">${badgeIcon} ${l.codigo_lote} - ${l.nome}</option>`;
+      return `<option value="${l.id_lote}">${l.codigo_lote} - ${l.nome}</option>`;
     }).join('');
 
     if(!filtered.some(l=>l.id_lote===selectedLoteId)){
@@ -782,34 +1013,6 @@
 
   // Recalcular Auditoria
   $('#audit-btn').addEventListener('click',()=>updateSeloCard());
-
-  // Modal Novo Lote
-  $('#open-new-lote-modal').addEventListener('click',()=>{
-    $('#modal-data-inicio').value=new Date().toISOString().slice(0,16);
-    $('#modal-lote').classList.remove('hidden');
-  });
-  $('#modal-close-btn').addEventListener('click',()=>$('#modal-lote').classList.add('hidden'));
-
-  $('#new-lote-form').addEventListener('submit',async event=>{
-    event.preventDefault();
-    const data=Object.fromEntries(new FormData(event.currentTarget));
-    try{
-      const res=await fetch('/api/v1/lotes',{
-        method:'POST',
-        headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
-        body:JSON.stringify(data)
-      });
-      const created=await readJson(res);
-      $('#modal-lote').classList.add('hidden');
-      $('#new-lote-form').reset();
-      await loadLotes();
-      selectedLoteId=created.lote.id_lote;
-      applyFilterToSelect();
-      await updateSeloCard();
-    }catch(e){
-      alert('Erro ao salvar lote: '+e.message);
-    }
-  });
 
   $('#lote-select').addEventListener('change',event=>{
     if(event.target.value){
@@ -1058,6 +1261,251 @@
 
     svg.innerHTML=`<defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${fill}" stop-opacity=".32"/><stop offset="100%" stop-color="${fill}" stop-opacity=".015"/></linearGradient></defs>${grid.join('')}<path d="${area}" fill="url(#chart-fill)"/><path d="${line}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${points.length>1?`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="7" fill="${color}" stroke="#fff" stroke-width="3"><title>${last.value.toFixed(isLux?0:1)} ${unit} · ${formatDate(last.time)}</title></circle>`:''}<text x="${left}" y="${height-8}" fill="#89958d" font-size="10" font-family="system-ui">${shortTime(firstTime)}</text><text x="${width-right}" y="${height-8}" text-anchor="end" fill="#89958d" font-size="10" font-family="system-ui">${shortTime(lastTime)}</text>`;
   }
+
+  // ============================================================
+  //  NAVEGAÇÃO POR ABAS NO HEADER (DASHBOARD vs GESTÃO DE LOTES)
+  // ============================================================
+  function switchScreen(screen){
+    const isDash = screen === 'dashboard';
+    navBtnDash.classList.toggle('active', isDash);
+    navBtnLotes.classList.toggle('active', !isDash);
+    screenDashboard.classList.toggle('hidden', !isDash);
+    screenLotes.classList.toggle('hidden', isDash);
+    if(isDash){
+      loadLotes();
+      refreshDashboard();
+    } else {
+      crudLoadAndRender();
+    }
+  }
+
+  navBtnDash.addEventListener('click', () => switchScreen('dashboard'));
+  navBtnLotes.addEventListener('click', () => switchScreen('lotes'));
+
+  // Botão + Novo Lote dentro do Dashboard abre o modal de criação
+  const openNewLoteModalBtn = $('#open-new-lote-modal');
+  if(openNewLoteModalBtn){
+    openNewLoteModalBtn.addEventListener('click', () => crudOpenNew());
+  }
+
+  // ============================================================
+  //  CRUD DE LOTES — Gerenciamento Completo & Paginação
+  // ============================================================
+  const PAGE_SIZE = 8;
+  let crudLotes = [];          // todos os lotes
+  let crudFiltered = [];       // filtrados pela busca/filtro
+  let crudPage = 1;
+  let crudDeleteId = null;
+
+  // Busca e filtros
+  $('#crud-search-input').addEventListener('input', () => { crudPage=1; crudApplyFilters(); });
+  $('#crud-status-filter').addEventListener('change', () => { crudPage=1; crudApplyFilters(); });
+  $('#crud-etapa-filter').addEventListener('change', () => { crudPage=1; crudApplyFilters(); });
+
+  async function crudLoadAndRender() {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/v1/lotes', { headers: { authorization: `Bearer ${token}` } });
+      const data = await readJson(res);
+      crudLotes = data.lotes || [];
+      crudPage = 1;
+      crudUpdateStats();
+      crudApplyFilters();
+    } catch(e) {
+      console.error('Erro ao carregar lotes para CRUD:', e);
+    }
+  }
+
+  function crudUpdateStats() {
+    const ap = crudLotes.filter(l => l.status_selo === 'aprovado').length;
+    const rp = crudLotes.filter(l => l.status_selo === 'reprovado').length;
+    const an = crudLotes.filter(l => l.status_selo === 'em_analise').length;
+    $('#crud-stats').innerHTML = `
+      <span style="font-size:12px;background:#fef5de;color:#9b6505;border:1px solid #fbd888;padding:4px 10px;border-radius:99px;font-weight:750">🏅 ${ap} com selo</span>
+      <span style="font-size:12px;background:#fee8e6;color:#b33d35;border:1px solid #f4d0cd;padding:4px 10px;border-radius:99px;font-weight:750">❌ ${rp} reprovados</span>
+      <span style="font-size:12px;background:#edf2ee;color:#5a6e63;border:1px solid #d8e2da;padding:4px 10px;border-radius:99px;font-weight:750">⏳ ${an} em análise</span>
+    `;
+  }
+
+  function crudApplyFilters() {
+    const q = ($('#crud-search-input').value || '').toLowerCase().trim();
+    const st = $('#crud-status-filter').value;
+    const et = $('#crud-etapa-filter').value;
+    crudFiltered = crudLotes.filter(l => {
+      const matchQ = !q || (l.codigo_lote || '').toLowerCase().includes(q)
+        || (l.nome || '').toLowerCase().includes(q)
+        || (l.variedade || '').toLowerCase().includes(q);
+      const matchSt = !st || l.status_selo === st;
+      const matchEt = !et || l.etapa_atual === et;
+      return matchQ && matchSt && matchEt;
+    });
+    crudRenderTable();
+  }
+
+  function crudPctClass(pct) {
+    if (!pct && pct !== 0) return 'wait';
+    return Number(pct) >= 70 ? 'ok' : 'fail';
+  }
+
+  function crudRenderTable() {
+    const tbody = $('#crud-tbody');
+    const total = crudFiltered.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (crudPage > totalPages) crudPage = totalPages;
+    const start = (crudPage - 1) * PAGE_SIZE;
+    const slice = crudFiltered.slice(start, start + PAGE_SIZE);
+
+    if (!slice.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="lotes-empty-message">Nenhum lote encontrado para os filtros selecionados.</td></tr>`;
+      $('#crud-pagination').style.display = 'none';
+      return;
+    }
+
+    tbody.innerHTML = slice.map(l => {
+      const seloHtml = l.status_selo === 'aprovado'
+        ? `<span class="selo-badge-sm ap">🏅 Aprovado</span>`
+        : l.status_selo === 'reprovado'
+          ? `<span class="selo-badge-sm rp">❌ Reprovado</span>`
+          : `<span class="selo-badge-sm an">⏳ Análise</span>`;
+      const etapaHtml = l.etapa_atual === 'pomar'
+        ? `<span class="etapa-pill pomar">🌿 Pomar</span>`
+        : `<span class="etapa-pill estoque">❄️ Câm. Fria</span>`;
+      const p1 = l.percentual_pomar != null ? `<span class="pct-cell ${crudPctClass(l.percentual_pomar)}">${Number(l.percentual_pomar).toFixed(0)}%</span>` : `<span class="pct-cell wait">—</span>`;
+      const p2 = l.percentual_estoque != null && l.percentual_estoque > 0 ? `<span class="pct-cell ${crudPctClass(l.percentual_estoque)}">${Number(l.percentual_estoque).toFixed(0)}%</span>` : `<span class="pct-cell wait">—</span>`;
+      return `<tr>
+        <td class="col-id"><span class="id-num">${l.id_lote}</span></td>
+        <td class="col-cod"><span class="cod-mono">${l.codigo_lote || '—'}</span></td>
+        <td><div style="font-weight:700;color:var(--ink)">${l.nome || '—'}</div><div style="display:flex;gap:6px;margin-top:4px"><span class="variedade-tag">${l.variedade || '—'}</span></div></td>
+        <td class="col-etapa">${etapaHtml}</td>
+        <td class="col-pomar">${p1}</td>
+        <td class="col-estoque">${p2}</td>
+        <td class="col-selo">${seloHtml}</td>
+        <td class="col-acoes">
+          <button class="btn-edit" onclick="crudOpenEdit(${l.id_lote})" title="Editar lote">✏️ Editar</button>
+          <button class="btn-del" onclick="crudOpenDelete(${l.id_lote},'${(l.codigo_lote||'').replace(/'/g,"\\'")} – ${(l.nome||'').replace(/'/g,"\\'")}')" title="Excluir lote">🗑️</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Paginação
+    const pg = $('#crud-pagination');
+    pg.style.display = 'flex';
+    $('#crud-pag-info').textContent = `Exibindo ${start+1}–${Math.min(start+PAGE_SIZE, total)} de ${total} lote${total!==1?'s':''}`;
+    const btns = $('#crud-pag-btns');
+    let bHtml = `<button class="pg-btn" ${crudPage===1?'disabled':''} onclick="crudGoPage(${crudPage-1})">‹ Ant.</button>`;
+    for (let p = 1; p <= totalPages; p++) {
+      bHtml += `<button class="pg-btn${p===crudPage?' active':''}" onclick="crudGoPage(${p})">${p}</button>`;
+    }
+    bHtml += `<button class="pg-btn" ${crudPage===totalPages?'disabled':''} onclick="crudGoPage(${crudPage+1})">Próx. ›</button>`;
+    btns.innerHTML = bHtml;
+  }
+
+  window.crudGoPage = function(p) { crudPage=p; crudRenderTable(); };
+
+  // ---- Novo Lote (botão no CRUD) ----
+  $('#crud-new-btn').addEventListener('click', () => crudOpenNew());
+
+  function crudOpenNew() {
+    $('#crud-modal-title').textContent = 'Novo Lote';
+    $('#crud-modal-save').textContent = 'Criar Lote';
+    $('#crud-edit-id').value = '';
+    $('#cf-codigo').value = '';
+    $('#cf-nome').value = '';
+    $('#cf-variedade').value = 'Tommy Atkins';
+    $('#cf-etapa').value = 'pomar';
+    $('#cf-inicio').value = new Date().toISOString().slice(0,16);
+    $('#cf-colheita').value = '';
+    $('#cf-fim').value = '';
+    $('#modal-crud-lote').classList.add('open');
+    $('#cf-codigo').focus();
+  }
+
+  window.crudOpenEdit = function(id) {
+    const l = crudLotes.find(x => x.id_lote === id);
+    if (!l) return;
+    $('#crud-modal-title').textContent = `Editar — ${l.codigo_lote}`;
+    $('#crud-modal-save').textContent = 'Salvar Alterações';
+    $('#crud-edit-id').value = l.id_lote;
+    $('#cf-codigo').value = l.codigo_lote || '';
+    $('#cf-nome').value = l.nome || '';
+    $('#cf-variedade').value = l.variedade || 'Tommy Atkins';
+    $('#cf-etapa').value = l.etapa_atual || 'pomar';
+    $('#cf-inicio').value = l.data_inicio ? l.data_inicio.slice(0,16) : '';
+    $('#cf-colheita').value = l.data_colheita ? l.data_colheita.slice(0,16) : '';
+    $('#cf-fim').value = l.data_fim ? l.data_fim.slice(0,16) : '';
+    $('#modal-crud-lote').classList.add('open');
+    $('#cf-nome').focus();
+  };
+
+  function crudCloseModal() { $('#modal-crud-lote').classList.remove('open'); }
+  $('#crud-modal-close').addEventListener('click', crudCloseModal);
+  $('#crud-modal-cancel').addEventListener('click', crudCloseModal);
+  $('#modal-crud-lote').addEventListener('click', e => { if(e.target === $('#modal-crud-lote')) crudCloseModal(); });
+
+  $('#crud-lote-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = $('#crud-modal-save');
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+    const id = $('#crud-edit-id').value;
+    const body = {
+      codigo_lote: $('#cf-codigo').value.trim(),
+      nome: $('#cf-nome').value.trim(),
+      variedade: $('#cf-variedade').value,
+      etapa_atual: $('#cf-etapa').value,
+      data_inicio: $('#cf-inicio').value || null,
+      data_colheita: $('#cf-colheita').value || null,
+      data_fim: $('#cf-fim').value || null
+    };
+    try {
+      const res = await fetch(id ? `/api/v1/lotes/${id}` : '/api/v1/lotes', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify(id ? body : { ...body, device_id: 'esp32c3-01' })
+      });
+      await readJson(res);
+      crudCloseModal();
+      await crudLoadAndRender();
+    } catch(err) {
+      alert('Erro ao salvar: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = id ? 'Salvar Alterações' : 'Criar Lote';
+    }
+  });
+
+  // ---- Excluir ----
+  window.crudOpenDelete = function(id, label) {
+    crudDeleteId = id;
+    $('#confirm-del-desc').textContent = `Você está prestes a excluir o lote "${label}". Esta ação é irreversível.`;
+    $('#modal-confirm-del').classList.add('open');
+  };
+
+  $('#confirm-del-cancel').addEventListener('click', () => { $('#modal-confirm-del').classList.remove('open'); crudDeleteId=null; });
+  $('#modal-confirm-del').addEventListener('click', e => { if(e.target === $('#modal-confirm-del')){ $('#modal-confirm-del').classList.remove('open'); crudDeleteId=null; }});
+
+  $('#confirm-del-ok').addEventListener('click', async () => {
+    if (!crudDeleteId) return;
+    const btn = $('#confirm-del-ok');
+    btn.disabled = true;
+    btn.textContent = 'Excluindo…';
+    try {
+      const res = await fetch(`/api/v1/lotes/${crudDeleteId}`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` }
+      });
+      await readJson(res);
+      $('#modal-confirm-del').classList.remove('open');
+      crudDeleteId = null;
+      await crudLoadAndRender();
+    } catch(err) {
+      alert('Erro ao excluir: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sim, excluir';
+    }
+  });
+
 </script>
 </body>
 </html>

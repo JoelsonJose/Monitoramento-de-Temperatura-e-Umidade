@@ -7,7 +7,7 @@ function mockDb() {
     {
       id_lote: 1,
       codigo_lote: 'LOTE-MNG-2026-01',
-      nome: 'Safra Vale do São Francisco (Certificação Completa)',
+      nome: 'Safra Vale do São Francisco',
       variedade: 'Tommy Atkins',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
@@ -22,7 +22,7 @@ function mockDb() {
     {
       id_lote: 2,
       codigo_lote: 'LOTE-MNG-2026-02',
-      nome: 'Câmara Fria Pós-Colheita (Falha Térmica no Estoque)',
+      nome: 'Safra Petrolina',
       variedade: 'Palmer',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
@@ -37,7 +37,7 @@ function mockDb() {
     {
       id_lote: 3,
       codigo_lote: 'LOTE-MNG-2026-03',
-      nome: 'Safra Sertão Central (Estresse Térmico no Pomar)',
+      nome: 'Safra Sertão Central',
       variedade: 'Keitt',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
@@ -52,7 +52,7 @@ function mockDb() {
     {
       id_lote: 4,
       codigo_lote: 'LOTE-MNG-2026-04',
-      nome: 'Safra Petrolina - Exportação Europa',
+      nome: 'Safra Juazeiro',
       variedade: 'Kent',
       device_id: 'esp32c3-01',
       etapa_atual: 'estoque',
@@ -67,7 +67,7 @@ function mockDb() {
     {
       id_lote: 5,
       codigo_lote: 'LOTE-MNG-2026-05',
-      nome: 'Lote Atual em Maturação (Pendente Câmara Fria)',
+      nome: 'Safra Maturação no Pé',
       variedade: 'Tommy Atkins',
       device_id: 'esp32c3-01',
       etapa_atual: 'pomar',

@@ -59,25 +59,25 @@ ON CONFLICT(device_id) DO UPDATE SET last_seen_at = NOW();
 -- Lotes cadastrados
 INSERT INTO lotes (id_lote, codigo_lote, nome, variedade, device_id, etapa_atual, data_inicio, data_colheita, data_fim, percentual_pomar, percentual_estoque, percentual_conformidade, status_selo)
 VALUES 
-  -- LOTE 1: COM SELO (Aprovado em AMBAS as etapas: Pomar 88% e Estoque 92%)
-  (1, 'LOTE-MNG-2026-01', 'Safra Vale do São Francisco (Certificação Completa)', 'Tommy Atkins', 'esp32c3-01', 'estoque', 
-   NOW() - INTERVAL '30 days', NOW() - INTERVAL '12 days', NOW() - INTERVAL '2 days', 88.5, 92.0, 90.3, 'aprovado'),
+  -- LOTE 1: COM SELO (Aprovado em AMBAS as etapas: Pomar 100% e Estoque 100%)
+  (1, 'LOTE-MNG-2026-01', 'Safra Vale do São Francisco', 'Tommy Atkins', 'esp32c3-01', 'estoque', 
+   NOW() - INTERVAL '30 days', NOW() - INTERVAL '12 days', NOW() - INTERVAL '2 days', 100.0, 100.0, 100.0, 'aprovado'),
 
-  -- LOTE 2: SEM SELO (Aprovado no Pomar 85%, mas REPROVADO no Estoque 48% por quebra de refrigeração)
-  (2, 'LOTE-MNG-2026-02', 'Câmara Fria Pós-Colheita (Falha Térmica no Estoque)', 'Palmer', 'esp32c3-01', 'estoque', 
-   NOW() - INTERVAL '25 days', NOW() - INTERVAL '10 days', NOW() - INTERVAL '1 day', 85.0, 48.0, 66.5, 'reprovado'),
+  -- LOTE 2: SEM SELO (Aprovado no Pomar, mas REPROVADO no Estoque por quebra de refrigeração)
+  (2, 'LOTE-MNG-2026-02', 'Safra Petrolina', 'Palmer', 'esp32c3-01', 'estoque', 
+   NOW() - INTERVAL '25 days', NOW() - INTERVAL '10 days', NOW() - INTERVAL '1 day', 100.0, 33.3, 66.7, 'reprovado'),
 
-  -- LOTE 3: SEM SELO (REPROVADO no Pomar 42% por estresse térmico, apesar do Estoque 90%)
-  (3, 'LOTE-MNG-2026-03', 'Safra Sertão Central (Estresse Térmico no Pomar)', 'Keitt', 'esp32c3-01', 'estoque', 
-   NOW() - INTERVAL '20 days', NOW() - INTERVAL '8 days', NOW() - INTERVAL '1 day', 42.0, 90.0, 66.0, 'reprovado'),
+  -- LOTE 3: SEM SELO (REPROVADO no Pomar por estresse térmico, apesar do Estoque estar bom)
+  (3, 'LOTE-MNG-2026-03', 'Safra Sertão Central', 'Keitt', 'esp32c3-01', 'estoque', 
+   NOW() - INTERVAL '20 days', NOW() - INTERVAL '8 days', NOW() - INTERVAL '1 day', 33.3, 100.0, 66.7, 'reprovado'),
 
-  -- LOTE 4: COM SELO (Aprovado em AMBAS: Pomar 79% e Estoque 84%)
-  (4, 'LOTE-MNG-2026-04', 'Safra Petrolina - Exportação Europa', 'Kent', 'esp32c3-01', 'estoque', 
-   NOW() - INTERVAL '18 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '12 hours', 79.0, 84.5, 81.8, 'aprovado'),
+  -- LOTE 4: COM SELO (Aprovado em AMBAS as etapas)
+  (4, 'LOTE-MNG-2026-04', 'Safra Juazeiro', 'Kent', 'esp32c3-01', 'estoque', 
+   NOW() - INTERVAL '18 days', NOW() - INTERVAL '7 days', NOW() - INTERVAL '12 hours', 100.0, 100.0, 100.0, 'aprovado'),
 
-  -- LOTE 5: EM ANÁLISE (Pomar Ativo 89%, ainda não foi colhido para a câmara fria)
-  (5, 'LOTE-MNG-2026-05', 'Lote Atual em Maturação (Pendente Câmara Fria)', 'Tommy Atkins', 'esp32c3-01', 'pomar', 
-   NOW() - INTERVAL '6 hours', NULL, NULL, 89.0, 0, 89.0, 'em_analise')
+  -- LOTE 5: EM ANÁLISE (Pomar Ativo, ainda não foi colhido para a câmara fria)
+  (5, 'LOTE-MNG-2026-05', 'Safra Maturação no Pé', 'Tommy Atkins', 'esp32c3-01', 'pomar', 
+   NOW() - INTERVAL '6 hours', NULL, NULL, 100.0, 0, 100.0, 'em_analise')
 ON CONFLICT(codigo_lote) DO UPDATE SET 
   percentual_pomar = EXCLUDED.percentual_pomar,
   percentual_estoque = EXCLUDED.percentual_estoque,
