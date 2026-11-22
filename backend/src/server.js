@@ -215,6 +215,13 @@ function createInMemoryDb() {
         }
         if (sql.includes('etapa_atual = $1')) {
           found.etapa_atual = params[0];
+          if (params[1] && sql.includes('data_colheita')) {
+            found.data_colheita = params[1];
+          }
+        }
+        if (sql.includes("etapa_atual = 'estoque'")) {
+          found.etapa_atual = 'estoque';
+          if (!found.data_colheita) found.data_colheita = params[0] || new Date().toISOString();
         }
         return { rowCount: 1, rows: [found] };
       }
@@ -659,6 +666,20 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const result = await db.query(`DELETE FROM lotes WHERE id_lote = $1 RETURNING id_lote`, [loteId]);
       if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
       return reply(res, 200, { deleted: true, id_lote: loteId });
+    }
+
+    const loteColherMatch = /^\/api\/v1\/lotes\/(\d+)\/colher$/.exec(url.pathname);
+    if (req.method === 'POST' && loteColherMatch) {
+      const identity = verifyToken(bearer(req), env.JWT_SECRET);
+      if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
+      const loteId = Number(loteColherMatch[1]);
+      const now = new Date().toISOString();
+      const result = await db.query(`
+        UPDATE lotes SET etapa_atual = 'estoque', data_colheita = COALESCE(data_colheita, $1)
+        WHERE id_lote = $2 RETURNING *
+      `, [now, loteId]);
+      if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
+      return reply(res, 200, { lote: result.rows[0], message: 'Lote colhido com sucesso! Agora em monitoramento na Câmara Fria.' });
     }
 
     if (req.method === 'PATCH' && loteEtapaMatch) {
