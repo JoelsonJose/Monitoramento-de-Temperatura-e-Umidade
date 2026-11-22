@@ -1447,12 +1447,6 @@
   navBtnDash.addEventListener('click', () => switchScreen('dashboard'));
   navBtnLotes.addEventListener('click', () => switchScreen('lotes'));
 
-  // Botão + Novo Lote dentro do Dashboard abre o modal de criação
-  const openNewLoteModalBtn = $('#open-new-lote-modal');
-  if(openNewLoteModalBtn){
-    openNewLoteModalBtn.addEventListener('click', () => crudOpenNew());
-  }
-
   // ============================================================
   //  CRUD DE LOTES — Gerenciamento Completo & Paginação
   // ============================================================
