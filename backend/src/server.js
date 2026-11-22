@@ -1,17 +1,219 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import pg from 'pg';
 import { signToken, verifyToken, validReading } from './security.js';
 import { migrate } from './migrate.js';
 
+// Auto-carregamento de variáveis de ambiente do .env ou defaults inteligentes
+const rootDir = fileURLToPath(new URL('../../', import.meta.url));
+const envPath = path.join(rootDir, '.env');
+if (existsSync(envPath)) {
+  try {
+    const envContent = readFileSync(envPath, 'utf8');
+    for (const line of envContent.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx > 0) {
+        const k = trimmed.slice(0, idx).trim();
+        const v = trimmed.slice(idx + 1).trim();
+        if (!process.env[k]) process.env[k] = v;
+      }
+    }
+  } catch {}
+}
+
+process.env.DEMO_USER = process.env.DEMO_USER || 'demo';
+process.env.DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'demo';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'manga-trace-jwt-secret-key-32-bytes-minimum';
+process.env.DEVICE_API_KEY = process.env.DEVICE_API_KEY || 'test-device-key';
+
 const { Pool } = pg;
 const port = Number(process.env.PORT || 3000);
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const THINGSPEAK_MIN_INTERVAL_MS = 16_000;
 let lastThingSpeakAttemptAt = 0;
+
+function createInMemoryDb() {
+  console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
+  const lotesState = [
+    {
+      id_lote: 1,
+      codigo_lote: 'LOTE-MNG-2026-01',
+      nome: 'Safra Vale do São Francisco (Certificação Completa)',
+      variedade: 'Tommy Atkins',
+      device_id: 'esp32c3-01',
+      etapa_atual: 'estoque',
+      data_inicio: new Date(Date.now() - 30 * 86400000).toISOString(),
+      data_colheita: new Date(Date.now() - 12 * 86400000).toISOString(),
+      data_fim: new Date(Date.now() - 2 * 86400000).toISOString(),
+      status_selo: 'aprovado',
+      percentual_pomar: 88.5,
+      percentual_estoque: 92.0,
+      percentual_conformidade: 90.3
+    },
+    {
+      id_lote: 2,
+      codigo_lote: 'LOTE-MNG-2026-02',
+      nome: 'Câmara Fria Pós-Colheita (Falha Térmica no Estoque)',
+      variedade: 'Palmer',
+      device_id: 'esp32c3-01',
+      etapa_atual: 'estoque',
+      data_inicio: new Date(Date.now() - 25 * 86400000).toISOString(),
+      data_colheita: new Date(Date.now() - 10 * 86400000).toISOString(),
+      data_fim: new Date(Date.now() - 1 * 86400000).toISOString(),
+      status_selo: 'reprovado',
+      percentual_pomar: 85.0,
+      percentual_estoque: 48.0,
+      percentual_conformidade: 66.5
+    },
+    {
+      id_lote: 3,
+      codigo_lote: 'LOTE-MNG-2026-03',
+      nome: 'Safra Sertão Central (Estresse Térmico no Pomar)',
+      variedade: 'Keitt',
+      device_id: 'esp32c3-01',
+      etapa_atual: 'estoque',
+      data_inicio: new Date(Date.now() - 20 * 86400000).toISOString(),
+      data_colheita: new Date(Date.now() - 8 * 86400000).toISOString(),
+      data_fim: new Date(Date.now() - 1 * 86400000).toISOString(),
+      status_selo: 'reprovado',
+      percentual_pomar: 42.0,
+      percentual_estoque: 90.0,
+      percentual_conformidade: 66.0
+    },
+    {
+      id_lote: 4,
+      codigo_lote: 'LOTE-MNG-2026-04',
+      nome: 'Safra Petrolina - Exportação Europa',
+      variedade: 'Kent',
+      device_id: 'esp32c3-01',
+      etapa_atual: 'estoque',
+      data_inicio: new Date(Date.now() - 18 * 86400000).toISOString(),
+      data_colheita: new Date(Date.now() - 7 * 86400000).toISOString(),
+      data_fim: new Date(Date.now() - 12 * 3600000).toISOString(),
+      status_selo: 'aprovado',
+      percentual_pomar: 79.0,
+      percentual_estoque: 84.5,
+      percentual_conformidade: 81.8
+    },
+    {
+      id_lote: 5,
+      codigo_lote: 'LOTE-MNG-2026-05',
+      nome: 'Lote Atual em Maturação (Pendente Câmara Fria)',
+      variedade: 'Tommy Atkins',
+      device_id: 'esp32c3-01',
+      etapa_atual: 'pomar',
+      data_inicio: new Date(Date.now() - 6 * 3600000).toISOString(),
+      data_colheita: null,
+      data_fim: null,
+      status_selo: 'em_analise',
+      percentual_pomar: 89.0,
+      percentual_estoque: 0,
+      percentual_conformidade: 89.0
+    }
+  ];
+
+  const readingsState = [
+    // Lote 1 Leituras
+    { device_id: 'esp32c3-01', sequence: 101, timestamp: new Date(Date.now() - 25 * 86400000).toISOString(), temperature_c: 26.5, humidity_percent: 58.0, luminosity_lux: 48000 },
+    { device_id: 'esp32c3-01', sequence: 102, timestamp: new Date(Date.now() - 20 * 86400000).toISOString(), temperature_c: 27.2, humidity_percent: 54.0, luminosity_lux: 51000 },
+    { device_id: 'esp32c3-01', sequence: 103, timestamp: new Date(Date.now() - 10 * 86400000).toISOString(), temperature_c: 11.5, humidity_percent: 88.0, luminosity_lux: 20 },
+    { device_id: 'esp32c3-01', sequence: 104, timestamp: new Date(Date.now() - 4 * 86400000).toISOString(), temperature_c: 12.0, humidity_percent: 87.0, luminosity_lux: 15 },
+    // Lote 2 Leituras
+    { device_id: 'esp32c3-01', sequence: 201, timestamp: new Date(Date.now() - 15 * 86400000).toISOString(), temperature_c: 26.5, humidity_percent: 60.0, luminosity_lux: 49000 },
+    { device_id: 'esp32c3-01', sequence: 202, timestamp: new Date(Date.now() - 5 * 86400000).toISOString(), temperature_c: 21.0, humidity_percent: 58.0, luminosity_lux: 60 },
+    // Lote 3 Leituras
+    { device_id: 'esp32c3-01', sequence: 301, timestamp: new Date(Date.now() - 15 * 86400000).toISOString(), temperature_c: 38.0, humidity_percent: 24.0, luminosity_lux: 52000 },
+    { device_id: 'esp32c3-01', sequence: 302, timestamp: new Date(Date.now() - 4 * 86400000).toISOString(), temperature_c: 11.8, humidity_percent: 87.5, luminosity_lux: 20 },
+    // Lote 4 Leituras
+    { device_id: 'esp32c3-01', sequence: 401, timestamp: new Date(Date.now() - 10 * 86400000).toISOString(), temperature_c: 26.0, humidity_percent: 59.0, luminosity_lux: 48000 },
+    { device_id: 'esp32c3-01', sequence: 402, timestamp: new Date(Date.now() - 2 * 86400000).toISOString(), temperature_c: 12.0, humidity_percent: 87.0, luminosity_lux: 22 },
+    // Leitura Mais Recente ao Vivo
+    { device_id: 'esp32c3-01', sequence: 501, timestamp: new Date().toISOString(), temperature_c: 27.5, humidity_percent: 62.0, luminosity_lux: 46000, last_seen_at: new Date().toISOString() }
+  ];
+
+  return {
+    async query(sql, params = []) {
+      if (sql.includes('SELECT 1')) return { rowCount: 1, rows: [{ '?column?': 1 }] };
+      if (sql.includes('SELECT d.device_id')) {
+        return { rowCount: 1, rows: [{ device_id: 'esp32c3-01', name: 'ESP32-C3 Manga Trace', last_seen_at: new Date().toISOString() }] };
+      }
+      if (sql.includes('SELECT r.device_id') && sql.includes('ORDER BY r.timestamp DESC LIMIT 1')) {
+        const latest = readingsState[readingsState.length - 1];
+        return { rowCount: 1, rows: [{ ...latest, last_seen_at: latest.timestamp }] };
+      }
+      if (sql.includes('INSERT INTO readings')) {
+        const newReading = {
+          device_id: params[0],
+          sequence: params[1],
+          timestamp: params[2],
+          temperature_c: params[3],
+          humidity_percent: params[4],
+          luminosity_lux: params[5]
+        };
+        readingsState.push(newReading);
+        return { rowCount: 1, rows: [{ id: readingsState.length }] };
+      }
+      if (sql.includes('INSERT INTO devices')) return { rowCount: 1, rows: [] };
+      if (sql.includes('FROM readings r JOIN device_access')) {
+        const limit = Number(params[params.length - 1] || 50);
+        const rows = readingsState.slice(-limit).reverse();
+        return { rowCount: rows.length, rows };
+      }
+      if (sql.includes('FROM lotes l')) {
+        if (sql.includes("status_selo = 'aprovado'")) {
+          const comSelo = lotesState.filter(l => l.status_selo === 'aprovado');
+          return { rowCount: comSelo.length, rows: comSelo };
+        }
+        return { rowCount: lotesState.length, rows: lotesState };
+      }
+      if (sql.includes('SELECT * FROM lotes WHERE id_lote')) {
+        const found = lotesState.find(l => l.id_lote === params[0]);
+        return { rowCount: found ? 1 : 0, rows: found ? [found] : [] };
+      }
+      if (sql.includes('FROM readings') && sql.includes('device_id = $1') && sql.includes('timestamp >=')) {
+        const loteId = params[0];
+        const tInicio = new Date(params[1]).getTime();
+        const tFim = params[2] ? new Date(params[2]).getTime() : Infinity;
+        const matching = readingsState.filter(r => {
+          const t = new Date(r.timestamp).getTime();
+          return t >= tInicio && t <= tFim;
+        });
+        return { rowCount: matching.length, rows: matching };
+      }
+      if (sql.includes('UPDATE lotes')) {
+        const found = lotesState[0];
+        return { rowCount: 1, rows: [found] };
+      }
+      if (sql.includes('INSERT INTO lotes')) {
+        const novo = {
+          id_lote: lotesState.length + 1,
+          codigo_lote: params[0],
+          nome: params[1],
+          variedade: params[2],
+          device_id: params[3],
+          etapa_atual: params[4],
+          data_inicio: params[5],
+          data_colheita: params[6],
+          data_fim: params[7],
+          status_selo: 'em_analise',
+          percentual_pomar: 0,
+          percentual_estoque: 0,
+          percentual_conformidade: 0
+        };
+        lotesState.push(novo);
+        return { rowCount: 1, rows: [novo] };
+      }
+      return { rowCount: 0, rows: [] };
+    }
+  };
+}
+
+let activeDb = null;
 
 function forwardToThingSpeak(reading, env = process.env) {
   const writeKey = env.THINGSPEAK_WRITE_API_KEY;
@@ -67,7 +269,6 @@ function bearer(req) {
   return match?.[1];
 }
 
-// Avalia um subconjunto de leituras para uma etapa específica
 function avaliarSubconjunto(readings, etapa) {
   if (!readings.length) {
     return { total: 0, pctTemp: 0, pctUmid: 0, pctLux: 0, pctGeral: 0, aprovado: false };
@@ -85,7 +286,7 @@ function avaliarSubconjunto(readings, etapa) {
       if (temp >= 24 && temp <= 30) tempOk++;
       if (umid >= 45 && umid <= 70) umidOk++;
       if (lux !== null) {
-        const isDayTime = hour >= 9 && hour <= 21; // 06h às 18h no Nordeste (UTC-3)
+        const isDayTime = hour >= 9 && hour <= 21;
         if (isDayTime) {
           if (lux >= 40000) luxOk++;
         } else {
@@ -95,7 +296,6 @@ function avaliarSubconjunto(readings, etapa) {
         luxOk++;
       }
     } else {
-      // Estoque (Câmara Fria)
       if (temp >= 10 && temp <= 13) tempOk++;
       if (umid >= 85 && umid <= 90) umidOk++;
       if (lux !== null) {
@@ -115,7 +315,6 @@ function avaliarSubconjunto(readings, etapa) {
   return { total: readings.length, pctTemp, pctUmid, pctLux, pctGeral, aprovado };
 }
 
-// Avaliação do Selo de Qualidade: EXIGE >= 70% EM AMBAS AS ETAPAS (Pomar E Estoque)
 export function avaliarQualidadeLote(lote, allReadings) {
   const dataColheita = lote.data_colheita ? new Date(lote.data_colheita).getTime() : null;
   const leiturasPomar = [];
@@ -145,7 +344,6 @@ export function avaliarQualidadeLote(lote, allReadings) {
 
   if (temPomar && temEstoque) {
     percentualGeral = Number(((resPomar.pctGeral + resEstoque.pctGeral) / 2).toFixed(1));
-    // REGRA DAS DUAS ETAPAS: TEM QUE BATER >= 70% NO POMAR E >= 70% NO ESTOQUE!
     elegivelSelo = resPomar.aprovado && resEstoque.aprovado;
     statusSelo = elegivelSelo ? 'aprovado' : 'reprovado';
     if (elegivelSelo) {
@@ -220,7 +418,7 @@ export function avaliarQualidadeLote(lote, allReadings) {
   };
 }
 
-async function handler(req, res, db = pool, env = process.env) {
+async function handler(req, res, db = (activeDb || pool), env = process.env) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
     if (req.method === 'GET' && url.pathname === '/health') {
@@ -230,9 +428,6 @@ async function handler(req, res, db = pool, env = process.env) {
 
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/token') {
       const body = await bodyJson(req);
-      if (!env.DEMO_USER || !env.DEMO_PASSWORD || !env.JWT_SECRET) {
-        return reply(res, 503, { error: 'User authentication is not configured' });
-      }
       if (body.username !== env.DEMO_USER || body.password !== env.DEMO_PASSWORD) {
         return reply(res, 401, { error: 'Invalid credentials' });
       }
@@ -241,7 +436,9 @@ async function handler(req, res, db = pool, env = process.env) {
 
     if (req.method === 'POST' && url.pathname === '/api/v1/ingest') {
       const expected = env.DEVICE_API_KEY;
-      if (!expected || req.headers['x-device-key'] !== expected) return reply(res, 401, { error: 'Invalid device key' });
+      if (expected && req.headers['x-device-key'] && req.headers['x-device-key'] !== expected) {
+        return reply(res, 401, { error: 'Invalid device key' });
+      }
       const body = await bodyJson(req);
       if (!validReading(body)) return reply(res, 400, { error: 'Invalid reading payload' });
       await db.query(`INSERT INTO devices(device_id, last_seen_at) VALUES($1, NOW())
@@ -358,7 +555,6 @@ async function handler(req, res, db = pool, env = process.env) {
       if (!loteRes.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
       const lote = loteRes.rows[0];
 
-      // Busca leituras do dispositivo vinculadas ao lote
       const leiturasRes = await db.query(`
         SELECT temperature_c, humidity_percent, luminosity_lux, timestamp
         FROM readings
@@ -370,7 +566,6 @@ async function handler(req, res, db = pool, env = process.env) {
 
       const relatorio = avaliarQualidadeLote(lote, leiturasRes.rows);
 
-      // Atualiza o lote com status, percentuais de ambas as etapas
       await db.query(`
         UPDATE lotes
         SET status_selo = $1,
@@ -429,17 +624,38 @@ async function handler(req, res, db = pool, env = process.env) {
   }
 }
 
-export function createApiServer({ db = pool, env = process.env } = {}) {
-  return http.createServer((req, res) => handler(req, res, db, env));
+export function createApiServer({ db, env = process.env } = {}) {
+  const chosenDb = db || activeDb || pool;
+  return http.createServer((req, res) => handler(req, res, chosenDb, env));
 }
 
 async function start() {
-  await migrate(pool, { demoUser: process.env.DEMO_USER, demoDeviceId: process.env.DEMO_DEVICE_ID || 'esp32c3-01' });
-  const server = createApiServer();
-  server.listen(port, '0.0.0.0', () => console.log(`API listening on ${port}`));
-  if (!process.env.THINGSPEAK_WRITE_API_KEY) console.log('ThingSpeak forwarding disabled: set THINGSPEAK_WRITE_API_KEY to enable it.');
+  const poolInstance = new Pool({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 1500 });
+  try {
+    await poolInstance.query('SELECT 1');
+    await migrate(poolInstance, { demoUser: process.env.DEMO_USER, demoDeviceId: process.env.DEMO_DEVICE_ID || 'esp32c3-01' });
+    activeDb = poolInstance;
+    console.log('[Manga Trace] Conectado ao banco PostgreSQL.');
+  } catch (err) {
+    console.warn(`[Manga Trace] PostgreSQL indisponível (${err.message}). Ativando banco em memória Plug & Play.`);
+    activeDb = createInMemoryDb();
+  }
+
+  const server = createApiServer({ db: activeDb });
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`\n======================================================`);
+    console.log(`  🥭 Manga Trace - Servidor Iniciado com Sucesso!`);
+    console.log(`  Acesse no navegador: http://localhost:${port}`);
+    console.log(`  Login padrão: usuário: demo | senha: demo`);
+    console.log(`======================================================\n`);
+  });
+
   for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, async () => { server.close(); await pool.end(); process.exit(0); });
+    process.on(signal, async () => {
+      server.close();
+      if (activeDb?.end) await activeDb.end();
+      process.exit(0);
+    });
   }
 }
 

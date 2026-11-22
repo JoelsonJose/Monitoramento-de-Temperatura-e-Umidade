@@ -42,7 +42,7 @@ const char* WIFI_PASS = "Sua_Senha_WiFi";
 #endif
 
 // Parâmetros de temporização
-constexpr unsigned long READ_INTERVAL_MS = 5000;
+constexpr unsigned long READ_INTERVAL_MS = 4000;
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 15000;
 constexpr const char* AP_SSID = "MangaTrace-Setup";
 constexpr const char* AP_PASS = "12345678";
@@ -75,64 +75,8 @@ uint64_t reservedSequenceEnd = 0;
 // Leitura calibrada do sensor de luminosidade (LDR em divisor de tensão)
 float readLuminosityLux() {
   const int raw = analogRead(LDRPIN);
-  // ESP32-C3 ADC: 12 bits (0 a 4095)
-  // Montagem padrão com pull-down de 10k: maior luz = maior tensão (maior leitura)
-  // Montagem com pull-up: inverte a leitura.
-  // Mapeamos proporcionalmente com curva agronômica para estimar de 0 a 75.000 lux.
   float normalized = (float)raw / 4095.0f;
-  if (normalized < 0.005f) return 10.0f; // escuro (ex: estoque/câmara fria)
-  
-  // Curva de resposta de LDR: lux proporcional à potência da leitura
-  float estimatedLux = 10.0f + powf(normalized, 1.8f) * 75000.0f;
-  if (estimatedLux > 100000.0f) estimatedLux = 100000.0f;
-  return estimatedLux;
-}
-
-void loadStoredConfiguration() {
-  preferences.begin("iot-config", false);
-  String storedSsid = preferences.getString("ssid", "");
-  String storedPass = preferences.getString("pass", "");
-  String storedApiUrl = preferences.getString("api_url", "");
-  String storedDeviceId = preferences.getString("device_id", "");
-  String storedApiKey = preferences.getString("api_key", "");
-
-  if (storedSsid.length() > 0) {
-    activeSsid = storedSsid;
-    activePass = storedPass;
-  } else {
-    activeSsid = String(WIFI_SSID);
-    activePass = String(WIFI_PASS);
-  }
-
-  if (storedApiUrl.length() > 0) activeApiUrl = storedApiUrl;
-  if (storedDeviceId.length() > 0) activeDeviceId = storedDeviceId;
-  if (storedApiKey.length() > 0) activeApiKey = storedApiKey;
-}
-
-void startAccessPoint() {
-  if (apModeActive) return;
-  Serial.println("\nAtivando Ponto de Acesso (AP) de contingência...");
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(AP_SSID, AP_PASS);
-  IPAddress apIP = WiFi.softAPIP();
-  apModeActive = true;
-  Serial.print("Conecte no Wi-Fi: ");
-  Serial.println(AP_SSID);
-  Serial.print("Abra no navegador: http://");
-  Serial.println(apIP);
-}
-
-// Leitura calibrada do sensor de luminosidade (LDR em divisor de tensão)
-float readLuminosityLux() {
-  const int raw = analogRead(LDRPIN);
-  // ESP32-C3 ADC: 12 bits (0 a 4095)
-  // Montagem padrão com pull-down de 10k: maior luz = maior tensão (maior leitura)
-  // Montagem com pull-up: inverte a leitura.
-  // Mapeamos proporcionalmente com curva agronômica para estimar de 0 a 75.000 lux.
-  float normalized = (float)raw / 4095.0f;
-  if (normalized < 0.005f) return 10.0f; // escuro (ex: estoque/câmara fria)
-  
-  // Curva de resposta de LDR: lux proporcional à potência da leitura
+  if (normalized < 0.005f) return 10.0f;
   float estimatedLux = 10.0f + powf(normalized, 1.8f) * 75000.0f;
   if (estimatedLux > 100000.0f) estimatedLux = 100000.0f;
   return estimatedLux;
@@ -217,7 +161,6 @@ void handleRoot() {
     html += "<div class='metric'><span class='metric-title'>Umidade do Ar</span><span class='metric-value'>" + String(humidityPercent, 1) + " %</span></div>";
     html += "<div class='metric'><span class='metric-title'>Luminosidade</span><span class='metric-value'>" + String(luminosityLux, 0) + " lux</span></div>";
     
-    // Análise agronômica rápida
     String agronomy = (luminosityLux >= 35000.0f) ? "Sol Pleno (Pomar)" : (luminosityLux <= 60.0f ? "Escuro (Câmara Fria)" : "Luz Intermediária");
     html += "<div style='text-align:center;margin:12px 0;'><span class='badge'>" + agronomy + "</span></div>";
     html += "<p class='status'>Última leitura há " + formatAge(millis() - lastValidReadingAt) + "</p>";
@@ -303,15 +246,13 @@ void sendReadingToApi() {
     gmtime_r(&now, &utc);
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &utc);
   } else {
-    // Caso NTP ainda não tenha sincronizado, envia timestamp relativo aproximado
-    snprintf(timestamp, sizeof(timestamp), "2026-11-21T19:00:00Z");
+    snprintf(timestamp, sizeof(timestamp), "2026-11-22T12:00:00Z");
   }
 
   if (nextSequence >= reservedSequenceEnd && !reserveSequenceBlock()) {
     return;
   }
 
-  // Montagem do JSON com temperatura, umidade e luminosidade
   String payload = "{\"device_id\":\"" + activeDeviceId + "\",\"sequence\":";
   payload += String((unsigned long long)nextSequence++);
   payload += ",\"timestamp\":\"" + String(timestamp) + "\",\"temperature_c\":";
@@ -325,7 +266,6 @@ void sendReadingToApi() {
     if (String(API_ROOT_CA).length() > 0) {
       http.begin(apiUrl, API_ROOT_CA);
     } else {
-      // Modo Plug & Play HTTPS (setInsecure permite enviar para o Render sem travar em certificado CA ausente)
       WiFiClientSecure client;
       client.setInsecure();
       http.begin(client, apiUrl);
@@ -337,7 +277,7 @@ void sendReadingToApi() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Key", activeApiKey);
   const int status = http.POST(payload);
-  Serial.printf("API Ingest: HTTP %d (Luminosidade: %.1f lux)\n", status, luminosityLux);
+  Serial.printf("[API Nuvem] HTTP %d\n", status);
   http.end();
 }
 
@@ -351,7 +291,7 @@ void sampleSensor() {
 
   if (isnan(newTemperatureC) || isnan(newHumidityPercent)) {
     latestReadingValid = false;
-    Serial.printf("Aviso: DHT11 aguardando leitura; Lux: %.0f\n", luminosityLux);
+    Serial.printf("[Sensor] Aguardando leitura válida do DHT11... (Luz: %.0f lux)\n", luminosityLux);
     return;
   }
 
@@ -361,7 +301,12 @@ void sampleSensor() {
   latestReadingValid = true;
   lastValidReadingAt = lastSampleAt;
 
-  Serial.printf("Temp: %.1f °C | Umid: %.1f %% | Luz: %.0f lux\n",
+  // 1. Linha JSON direta para Leitura Plug & Play via Cabo USB no Dashboard (Web Serial)
+  Serial.printf("{\"device_id\":\"%s\",\"sequence\":%llu,\"temperature_c\":%.1f,\"humidity_percent\":%.1f,\"luminosity_lux\":%.0f}\n",
+                activeDeviceId.c_str(), (unsigned long long)nextSequence, temperatureC, humidityPercent, luminosityLux);
+
+  // 2. Log legível para o usuário no monitor Serial
+  Serial.printf("[Telemetria] Temp: %.1f °C | Umid: %.1f %% | Luz: %.0f lux\n",
                 temperatureC, humidityPercent, luminosityLux);
 
   sendReadingToApi();
@@ -373,9 +318,8 @@ void maintainWiFi() {
   }
 
   const unsigned long now = millis();
-  // Se passou do tempo limite sem conectar, ativa o Ponto de Acesso Plug & Play automaticamente!
   if (!apModeActive && now - wifiAttemptStartedAt >= WIFI_CONNECT_TIMEOUT_MS) {
-    Serial.printf("Wi-Fi: tempo esgotado após %lu ms sem conexão.\n", WIFI_CONNECT_TIMEOUT_MS);
+    Serial.printf("Wi-Fi: tempo limite esgotado (%lu ms). Ativando Ponto de Acesso de Contingência.\n", WIFI_CONNECT_TIMEOUT_MS);
     startAccessPoint();
   }
 }
@@ -383,7 +327,7 @@ void maintainWiFi() {
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("\n--- Manga Trace: Inicializando ESP32 ---");
+  Serial.println("\n--- Manga Trace: Inicializando ESP32 Plug & Play ---");
 
   dht.begin();
   pinMode(LDRPIN, INPUT);
@@ -394,7 +338,6 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/save-config", HTTP_POST, handleSaveConfig);
   server.begin();
-  Serial.println("Servidor Web local iniciado na porta 80.");
 
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   sampleSensor();

@@ -59,21 +59,25 @@
     .topbar{height:78px;background:#ffffffd9;border-bottom:1px solid var(--line);display:flex;align-items:center;position:sticky;top:0;z-index:20;backdrop-filter:blur(8px)}
     .topbar-inner,.dashboard{width:min(1180px,calc(100% - 48px));margin:0 auto}
     .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
-    .top-actions{display:flex;align-items:center;gap:13px}
+    .top-actions{display:flex;align-items:center;gap:11px}
     .connection-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #dcebe0;border-radius:99px;background:#f1f8f2;padding:8px 12px;color:var(--green);font-size:12px;font-weight:750}
     .connection-dot{width:8px;height:8px;border-radius:50%;background:#36a86a;box-shadow:0 0 0 3px #36a86a22}
     .connection-pill.offline{background:var(--red-pale);border-color:#f4d5d1;color:var(--red)}
     .connection-pill.offline .connection-dot{background:var(--red);box-shadow:0 0 0 3px #b33d3522}
+    .connection-pill.usb{background:#e7f5eb;border-color:#bce1c7;color:#1c693a}
+    .connection-pill.usb .connection-dot{background:#1c693a;box-shadow:0 0 0 3px #1c693a22}
     .text-button{border:0;background:transparent;color:#66776e;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:700}
     .text-button:hover{background:#eef2eb;color:var(--ink)}
     .dashboard{padding:36px 0 54px}
     .welcome-row{display:flex;justify-content:space-between;align-items:flex-end;gap:25px;margin-bottom:24px}
     .welcome-row h1{font-size:clamp(26px,3vw,36px);letter-spacing:-.055em;margin:8px 0 6px}
     .welcome-row p{margin:0;color:var(--muted);font-size:14px}
-    .action-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #dfe6dc;background:#fff;color:var(--ink);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;box-shadow:0 4px 12px #183c2c08;transition:all .15s}
+    .action-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #dfe6dc;background:#fff;color:var(--ink);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;box-shadow:0 4px 12px #183c2c08;transition:all .15s}
     .action-btn:hover{border-color:#bdd1c0;background:#fcfdfb}
     .action-btn.primary-btn{background:var(--green);color:#fff;border-color:var(--green)}
     .action-btn.primary-btn:hover{background:var(--green-dark)}
+    .action-btn.usb-btn{background:#fdfaf3;border-color:#f2a51a;color:#9b6505}
+    .action-btn.usb-btn:hover{background:#fdf2d8}
     .action-btn svg{width:16px;height:16px}
 
     /* 4 Metric Cards */
@@ -242,8 +246,8 @@
         <h2 id="login-title">Que bom ter você aqui.</h2>
         <p class="login-hint">Entre com sua conta para acessar a telemetria dos sensores e a auditoria de lotes.</p>
         <form id="login-form">
-          <label class="field"><span>Usuário</span><input name="username" autocomplete="username" required></label>
-          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" required></label>
+          <label class="field"><span>Usuário</span><input name="username" autocomplete="username" value="demo" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" value="demo" required></label>
           <button class="primary" id="login-button" type="submit">Entrar no painel</button>
         </form>
         <p class="login-status" id="login-status" role="status" aria-live="polite">Acesso restrito à equipe do projeto.</p>
@@ -257,6 +261,10 @@
     <header class="topbar"><div class="topbar-inner">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M22.8 6.4c-8.7.2-14 4-14 11.4 0 4.8 3.2 8.1 7.8 8.1 6.6 0 10.2-7.1 6.2-19.5Z" fill="#F2A51A"/><path d="M17.1 9.1c.3-3.5 2.3-5.4 6.3-5.6-.6 3.2-2.6 5.1-6.3 5.6Z" fill="#39774A"/><path d="M12 21.8c2.1-5.4 5.8-9 10.2-11.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="brand-name">Manga <span>Trace</span></span></div>
       <div class="top-actions">
+        <!-- BOTÃO PLUG & PLAY VIA CABO USB -->
+        <button class="action-btn usb-btn" id="usb-connect-btn" type="button" title="Conectar ESP32 diretamente pelo Cabo USB no computador">
+          🔌 Conectar Cabo USB
+        </button>
         <span class="connection-pill" id="connection-pill"><i class="connection-dot"></i><span id="connection-label">Conectado</span></span>
         <button class="text-button" id="logout-button" type="button">Sair</button>
       </div>
@@ -516,6 +524,10 @@
   let currentFilter='todos';
   let activeMetric='temperature_c';
 
+  // Conexão direta via Cabo USB (Web Serial API)
+  let serialPort=null;
+  let serialReader=null;
+
   const $=selector=>document.querySelector(selector);
   const loginView=$('#login-view');
   const dashboardView=$('#dashboard-view');
@@ -523,6 +535,7 @@
   const loginButton=$('#login-button');
   const connectionPill=$('#connection-pill');
   const notice=$('#dashboard-notice');
+  const usbBtn=$('#usb-connect-btn');
 
   const messages={
     'Invalid credentials':'Usuário ou senha inválidos.',
@@ -555,8 +568,13 @@
     return Number.isNaN(date.getTime())?'—':date.toLocaleDateString('pt-BR');
   }
 
-  function setConnected(connected){
-    connectionPill.classList.toggle('offline',!connected);
+  function setConnected(connected, isUsb=false){
+    if(isUsb){
+      connectionPill.className='connection-pill usb';
+      $('#connection-label').textContent='USB Conectada';
+      return;
+    }
+    connectionPill.className='connection-pill' + (connected?'':' offline');
     $('#connection-label').textContent=connected?'Conectado':'Sem conexão';
     if(!connected)$('#device-status').textContent='Sem resposta da API';
   }
@@ -609,6 +627,95 @@
 
   $('#logout-button').addEventListener('click',()=>showLogin());
   $('#refresh-button').addEventListener('click',()=>refreshDashboard());
+
+  // CONEXÃO DIRETA VIA CABO USB (WEB SERIAL API)
+  usbBtn.addEventListener('click', async()=>{
+    if(!('serial' in navigator)){
+      alert('Seu navegador não suporta conexão direta por cabo USB (Web Serial API).\n\nRecomendamos usar Google Chrome, Microsoft Edge, Opera ou Brave para espetar a ESP32 no cabo e conectar imediatamente.');
+      return;
+    }
+    try{
+      serialPort=await navigator.serial.requestPort();
+      await serialPort.open({baudRate:115200});
+      usbBtn.textContent='🔌 USB Conectada';
+      usbBtn.style.background='#e7f5eb';
+      usbBtn.style.color='#1c693a';
+      usbBtn.style.borderColor='#1c693a';
+      setConnected(true, true);
+      showNotice('ESP32 conectada via Cabo USB! Telemetria ao vivo ativa.', false);
+
+      const textDecoder=new TextDecoderStream();
+      serialPort.readable.pipeTo(textDecoder.writable);
+      const reader=textDecoder.readable.getReader();
+      serialReader=reader;
+
+      let buffer='';
+      while(true){
+        const {value, done}=await reader.read();
+        if(done)break;
+        buffer+=value;
+        const lines=buffer.split(/\r?\n/);
+        buffer=lines.pop();
+        for(const line of lines){
+          parseUsbLine(line.trim());
+        }
+      }
+    }catch(err){
+      if(err.name!=='NotFoundError'){
+        console.warn('Erro ao conectar USB:', err);
+        alert('Não foi possível conectar à porta serial da ESP32: '+err.message);
+      }
+    }
+  });
+
+  function parseUsbLine(line){
+    if(!line)return;
+    try{
+      const start=line.indexOf('{');
+      const end=line.lastIndexOf('}');
+      if(start>=0 && end>start){
+        const jsonStr=line.slice(start, end+1);
+        const data=JSON.parse(jsonStr);
+        if(data.temperature_c!==undefined && data.humidity_percent!==undefined){
+          processLiveUsbReading(data);
+        }
+      }
+    }catch{}
+  }
+
+  async function processLiveUsbReading(r){
+    $('#temperature').innerHTML=`${Number(r.temperature_c).toFixed(1)}<span class="metric-unit">°C</span>`;
+    $('#humidity').innerHTML=`${Number(r.humidity_percent).toFixed(1)}<span class="metric-unit">%</span>`;
+    
+    const luxVal=(r.luminosity_lux!==null&&r.luminosity_lux!==undefined)?Number(r.luminosity_lux):null;
+    if(luxVal!==null){
+      $('#luminosity').innerHTML=`${Number(luxVal).toLocaleString('pt-BR',{maximumFractionDigits:0})}<span class="metric-unit">lux</span>`;
+      $('#luminosity-caption').textContent=luxVal>=35000?'Sol pleno no pomar':(luxVal<=60?'Ambiente câmara fria':'Iluminação intermediária');
+    }
+
+    $('#device-status').textContent='Online via USB';
+    $('#device-caption').textContent='ESP32-C3 · cabo USB conectado';
+    $('#record-device').textContent=`Dispositivo ${r.device_id||'esp32c3-01'}`;
+    $('#record-meta').textContent=`Leitura direta via cabo USB às ${new Date().toLocaleTimeString('pt-BR')}`;
+    setConnected(true, true);
+
+    // Encaminha a leitura para a API para salvar no banco e atualizar os lotes
+    try{
+      await fetch('/api/v1/ingest',{
+        method:'POST',
+        headers:{'content-type':'application/json','x-device-key':'test-device-key'},
+        body:JSON.stringify({
+          device_id:r.device_id||'esp32c3-01',
+          sequence:r.sequence||Date.now(),
+          timestamp:new Date().toISOString(),
+          temperature_c:Number(r.temperature_c),
+          humidity_percent:Number(r.humidity_percent),
+          luminosity_lux:Number(r.luminosity_lux||0)
+        })
+      });
+      await updateSeloCard();
+    }catch{}
+  }
 
   document.querySelectorAll('.chart-tab').forEach(button=>button.addEventListener('click',()=>{
     activeMetric=button.dataset.metric;
@@ -718,7 +825,6 @@
       const data=await readJson(res);
       lotes=data.lotes||[];
       
-      // Contadores nos botões de filtro
       $('#count-all').textContent=lotes.length;
       $('#count-selo').textContent=lotes.filter(l=>l.status_selo==='aprovado').length;
       $('#count-reprovados').textContent=lotes.filter(l=>l.status_selo==='reprovado').length;
@@ -855,7 +961,7 @@
         fetch('/api/v1/readings?limit=50',{headers})
       ]);
       const [latest,history]=await Promise.all([readJson(latestResponse),readJson(historyResponse)]);
-      setConnected(true);
+      if(!serialPort) setConnected(true, false);
       showNotice('');
 
       if(!latest.reading){
@@ -872,7 +978,7 @@
         
         const luxVal=(r.luminosity_lux!==null&&r.luminosity_lux!==undefined)?Number(r.luminosity_lux):null;
         if(luxVal!==null){
-          $('#luminosity').innerHTML=`${luxVal.toLocaleString('pt-BR',{maximumFractionDigits:0})}<span class="metric-unit">lux</span>`;
+          $('#luminosity').innerHTML=`${Number(luxVal).toLocaleString('pt-BR',{maximumFractionDigits:0})}<span class="metric-unit">lux</span>`;
           $('#luminosity-caption').textContent=luxVal>=35000?'Sol pleno no pomar':(luxVal<=60?'Ambiente câmara fria':'Iluminação intermediária');
         }else{
           $('#luminosity').innerHTML='—<span class="metric-unit">lux</span>';
@@ -891,7 +997,7 @@
       await updateSeloCard();
     }catch(error){
       if(error.status===401){showLogin(error.message,true);return;}
-      setConnected(false);
+      if(!serialPort) setConnected(false, false);
       showNotice(error.message||friendlyError(),true);
     }
   }
