@@ -46,6 +46,13 @@ process.env.DEMO_USER = process.env.DEMO_USER || 'demo';
 process.env.DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'demo';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'manga-trace-jwt-secret-key-32-bytes-minimum';
 process.env.DEVICE_API_KEY = process.env.DEVICE_API_KEY || 'test-device-key';
+process.env.OTP_ENCRYPTION_KEY = process.env.OTP_ENCRYPTION_KEY || 'manga-trace-otp-key-minimum-32-chars-long!';
+process.env.MISSION_CODE = process.env.MISSION_CODE || 'MISSAO';
+
+export function logSecurityBlock(control, reason, details = {}, env = process.env) {
+  const missionCode = (env && env.MISSION_CODE) || process.env.MISSION_CODE || 'MISSAO';
+  console.warn(`[SEGURANCA][${missionCode}][${control}] Bloqueio: ${reason} | detalhes=${JSON.stringify(details)}`);
+}
 
 const { Pool } = pg;
 const port = Number(process.env.PORT || 3000);
@@ -55,6 +62,18 @@ let lastThingSpeakAttemptAt = 0;
 
 function createInMemoryDb() {
   console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
+  const demoUsername = process.env.DEMO_USER || 'demo';
+  const usersState = {
+    [demoUsername]: {
+      username: demoUsername,
+      role: 'admin',
+      otp_enabled: false,
+      otp_secret_encrypted: null,
+      otp_last_step: null,
+      recovery_codes_hash: [],
+      otp_enrolled_at: null
+    }
+  };
   const lotesState = [
     {
       id_lote: 1,
@@ -279,6 +298,62 @@ function createInMemoryDb() {
         found.data_colheita = params[5];
         found.data_fim = params[6];
         return { rowCount: 1, rows: [found] };
+      }
+      if (sql.includes('FROM users')) {
+        const username = params[0];
+        let u = usersState[username];
+        if (!u && username === demoUsername) {
+          u = { username, role: 'admin', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          usersState[username] = u;
+        }
+        if (!u) return { rowCount: 0, rows: [] };
+        if (sql.includes('otp_enabled = TRUE') && !u.otp_enabled) return { rowCount: 0, rows: [] };
+        if (sql.includes('otp_enabled = FALSE') && u.otp_enabled) return { rowCount: 0, rows: [] };
+        return { rowCount: 1, rows: [u] };
+      }
+      if (sql.includes('UPDATE users')) {
+        const username = params[0];
+        let u = usersState[username];
+        if (!u) {
+          u = { username, role: 'viewer', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          usersState[username] = u;
+        }
+        if (sql.includes('otp_secret_encrypted = $2')) {
+          u.otp_secret_encrypted = params[1];
+          u.otp_enabled = false;
+          u.otp_last_step = null;
+          u.recovery_codes_hash = [];
+        } else if (sql.includes('otp_enabled = TRUE')) {
+          u.otp_enabled = true;
+          u.otp_last_step = params[1];
+          u.recovery_codes_hash = typeof params[2] === 'string' ? JSON.parse(params[2]) : params[2];
+          u.otp_enrolled_at = new Date().toISOString();
+        } else if (sql.includes('otp_last_step = $2')) {
+          const step = params[1];
+          if (u.otp_last_step !== null && u.otp_last_step >= step) {
+            return { rowCount: 0, rows: [] };
+          }
+          u.otp_last_step = step;
+        } else if (sql.includes('recovery_codes_hash = recovery_codes_hash - $2')) {
+          const hashToRemove = params[1];
+          u.recovery_codes_hash = (u.recovery_codes_hash || []).filter(h => h !== hashToRemove);
+        }
+        return { rowCount: 1, rows: [u] };
+      }
+      if (sql.includes('FROM device_access')) {
+        const username = params[0];
+        const devId = params[1];
+        if (username === demoUsername && (!devId || devId === 'esp32c3-01')) {
+          return { rowCount: 1, rows: [{ username, device_id: 'esp32c3-01', is_owner: true, can_read: true }] };
+        }
+        return { rowCount: 0, rows: [] };
+      }
+      if (sql.includes('INNER JOIN device_access a ON a.device_id = l.device_id')) {
+        const [loteId, username] = params;
+        if (username === demoUsername && lotesState.some(l => l.id_lote === Number(loteId))) {
+          return { rowCount: 1, rows: [{ id_lote: Number(loteId) }] };
+        }
+        return { rowCount: 0, rows: [] };
       }
       return { rowCount: 0, rows: [] };
     }
@@ -519,6 +594,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
         body.username !== env.DEMO_USER ||
         body.password !== env.DEMO_PASSWORD
       ) {
+        logSecurityBlock('2FA_OTP', 'Credenciais inválidas no login primário', { username: body.username }, env);
         return reply(res, 401, { error: 'Invalid credentials' });
       }
 
@@ -530,6 +606,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       );
 
       if (!result.rowCount) {
+        logSecurityBlock('2FA_OTP', 'Usuário não localizado no banco', { username: body.username }, env);
         return reply(res, 401, { error: 'User not found' });
       }
 
@@ -641,6 +718,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const step = getMatchingTotpStep(secret, body.code);
 
       if (step === null) {
+        logSecurityBlock('2FA_OTP', 'Código TOTP incorreto na ativação do segundo fator', { username: identity.sub }, env);
         return reply(res, 401, { error: 'Invalid authenticator code' });
       }
 
@@ -732,6 +810,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       }
 
       if (!authenticated) {
+        logSecurityBlock('2FA_OTP', 'Código OTP ou de recuperação inválido, expirado ou já utilizado (replay)', { username: identity.sub }, env);
         return reply(res, 401, {
           error: 'Invalid, expired or already used authentication code'
         });
@@ -785,7 +864,10 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const access = await db.query(`SELECT d.device_id, d.name, d.created_at, d.last_seen_at
         FROM devices d JOIN device_access a USING(device_id)
         WHERE a.username = $1 AND a.device_id = $2 AND a.can_read = TRUE`, [identity.sub, deviceId]);
-      if (!access.rowCount) return reply(res, 403, { error: 'You do not have access to this device' });
+      if (!access.rowCount) {
+        logSecurityBlock('IDOR_DEVICE', 'Acesso negado: dispositivo pertence a outro usuário ou não existe', { username: identity.sub, device_id: deviceId }, env);
+        return reply(res, 403, { error: 'You do not have access to this device' });
+      }
       if (url.pathname.endsWith('/readings')) {
         const readings = await db.query(`SELECT device_id, sequence, timestamp, temperature_c, humidity_percent, luminosity_lux
           FROM readings WHERE device_id = $1 ORDER BY timestamp DESC LIMIT 100`, [deviceId]);
@@ -867,6 +949,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       `, [identity.sub, deviceId]);
 
       if (acesso.rowCount === 0) {
+        logSecurityBlock('IDOR_DEVICE', 'Criação negada: usuário não possui acesso ao dispositivo informado', { username: identity.sub, device_id: deviceId }, env);
         return reply(res, 403, {
           error: 'Você não tem permissão para criar lotes neste dispositivo'
         });
@@ -883,6 +966,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       `, [identity.sub, deviceId]);
 
       if (!possuiPropriedade.rowCount) {
+        logSecurityBlock('IDOR_DEVICE', 'Criação negada: usuário não é proprietário do dispositivo informado', { username: identity.sub, device_id: deviceId }, env);
         return reply(res, 403, {
           error: 'Você não tem permissão para criar lotes neste dispositivo.'
         });
@@ -908,6 +992,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       );
 
       if (!possuiAcesso) {
+        logSecurityBlock('IDOR_LOTE', 'Acesso negado: lote pertence a outro produtor/dispositivo', { username: identity.sub, lote_id: loteId, operacao: 'GET_QUALIDADE' }, env);
         return reply(res, 404, { error: 'Lote não encontrado' });
       }
 
@@ -952,6 +1037,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       );
 
       if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
         return reply(res, 404, { error: 'Lote não encontrado' });
       }
       const body = await bodyJson(req);
@@ -982,6 +1068,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       );
 
       if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
         return reply(res, 404, { error: 'Lote não encontrado' });
       }
       const result = await db.query(`DELETE FROM lotes WHERE id_lote = $1 RETURNING id_lote`, [loteId]);
@@ -1002,6 +1089,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       );
 
 if (!possuiPropriedade) {
+  logSecurityBlock('IDOR_LOTE', 'Comando de colheita negado: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'COLHER' }, env);
   return reply(res, 404, { error: 'Lote não encontrado' });
 }
       const now = new Date().toISOString();
@@ -1022,6 +1110,7 @@ if (!possuiPropriedade) {
       );
 
       if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
         return reply(res, 404, { error: 'Lote não encontrado' });
       }
       const body = await bodyJson(req);
