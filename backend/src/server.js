@@ -6,6 +6,22 @@ import path from 'node:path';
 import pg from 'pg';
 import { signToken, verifyToken, validReading } from './security.js';
 import { migrate } from './migrate.js';
+import { encryptSecret, decryptSecret } from './auth/secret-encryption.js';import {
+  generateTotpSecret,
+  generateTotp,
+  verifyTotp,
+  buildTotpUri,
+  getMatchingTotpStep
+} from './auth/totp.js';
+
+import {
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  verifyRecoveryCode
+} from './auth/recovery-codes.js';
+
+import { generateQrCode } from './auth/qr-code.js';
+import { consumeTotpStep } from './auth/totp-replay.js';
 
 // Auto-carregamento de variáveis de ambiente do .env ou defaults inteligentes
 const rootDir = fileURLToPath(new URL('../../', import.meta.url));
@@ -30,6 +46,13 @@ process.env.DEMO_USER = process.env.DEMO_USER || 'demo';
 process.env.DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'demo';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'manga-trace-jwt-secret-key-32-bytes-minimum';
 process.env.DEVICE_API_KEY = process.env.DEVICE_API_KEY || 'test-device-key';
+process.env.OTP_ENCRYPTION_KEY = process.env.OTP_ENCRYPTION_KEY || 'manga-trace-otp-key-minimum-32-chars-long!';
+process.env.MISSION_CODE = process.env.MISSION_CODE || 'MISSAO';
+
+export function logSecurityBlock(control, reason, details = {}, env = process.env) {
+  const missionCode = (env && env.MISSION_CODE) || process.env.MISSION_CODE || 'MISSAO';
+  console.warn(`[SEGURANCA][${missionCode}][${control}] Bloqueio: ${reason} | detalhes=${JSON.stringify(details)}`);
+}
 
 const { Pool } = pg;
 const port = Number(process.env.PORT || 3000);
@@ -39,6 +62,27 @@ let lastThingSpeakAttemptAt = 0;
 
 function createInMemoryDb() {
   console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
+  const demoUsername = process.env.DEMO_USER || 'demo';
+  const usersState = {
+    demo: {
+      username: 'demo',
+      role: 'admin',
+      otp_enabled: false,
+      otp_secret_encrypted: null,
+      otp_last_step: null,
+      recovery_codes_hash: [],
+      otp_enrolled_at: null
+    },
+    [demoUsername]: {
+      username: demoUsername,
+      role: 'admin',
+      otp_enabled: false,
+      otp_secret_encrypted: null,
+      otp_last_step: null,
+      recovery_codes_hash: [],
+      otp_enrolled_at: null
+    }
+  };
   const lotesState = [
     {
       id_lote: 1,
@@ -264,6 +308,62 @@ function createInMemoryDb() {
         found.data_fim = params[6];
         return { rowCount: 1, rows: [found] };
       }
+      if (sql.includes('FROM users')) {
+        const username = params[0];
+        let u = usersState[username];
+        if (!u && username === demoUsername) {
+          u = { username, role: 'admin', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          usersState[username] = u;
+        }
+        if (!u) return { rowCount: 0, rows: [] };
+        if (sql.includes('otp_enabled = TRUE') && !u.otp_enabled) return { rowCount: 0, rows: [] };
+        if (sql.includes('otp_enabled = FALSE') && u.otp_enabled) return { rowCount: 0, rows: [] };
+        return { rowCount: 1, rows: [u] };
+      }
+      if (sql.includes('UPDATE users')) {
+        const username = params[0];
+        let u = usersState[username];
+        if (!u) {
+          u = { username, role: 'viewer', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          usersState[username] = u;
+        }
+        if (sql.includes('otp_secret_encrypted = $2')) {
+          u.otp_secret_encrypted = params[1];
+          u.otp_enabled = false;
+          u.otp_last_step = null;
+          u.recovery_codes_hash = [];
+        } else if (sql.includes('otp_enabled = TRUE')) {
+          u.otp_enabled = true;
+          u.otp_last_step = params[1];
+          u.recovery_codes_hash = typeof params[2] === 'string' ? JSON.parse(params[2]) : params[2];
+          u.otp_enrolled_at = new Date().toISOString();
+        } else if (sql.includes('otp_last_step = $2')) {
+          const step = params[1];
+          if (u.otp_last_step !== null && u.otp_last_step >= step) {
+            return { rowCount: 0, rows: [] };
+          }
+          u.otp_last_step = step;
+        } else if (sql.includes('recovery_codes_hash = recovery_codes_hash - $2')) {
+          const hashToRemove = params[1];
+          u.recovery_codes_hash = (u.recovery_codes_hash || []).filter(h => h !== hashToRemove);
+        }
+        return { rowCount: 1, rows: [u] };
+      }
+      if (sql.includes('FROM device_access')) {
+        const username = params[0];
+        const devId = params[1];
+        if ((username === 'demo' || username === demoUsername) && (!devId || devId === 'esp32c3-01')) {
+          return { rowCount: 1, rows: [{ username, device_id: 'esp32c3-01', is_owner: true, can_read: true }] };
+        }
+        return { rowCount: 0, rows: [] };
+      }
+      if (sql.includes('INNER JOIN device_access a ON a.device_id = l.device_id')) {
+        const [loteId, username] = params;
+        if ((username === 'demo' || username === demoUsername) && lotesState.some(l => l.id_lote === Number(loteId))) {
+          return { rowCount: 1, rows: [{ id_lote: Number(loteId) }] };
+        }
+        return { rowCount: 0, rows: [] };
+      }
       return { rowCount: 0, rows: [] };
     }
   };
@@ -324,7 +424,20 @@ function bearer(req) {
   const match = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '');
   return match?.[1];
 }
+async function verificarAcessoLote(db, username, loteId, exigirProprietario = false) {
+  const result = await db.query(`
+    SELECT l.id_lote
+    FROM lotes l
+    INNER JOIN device_access a ON a.device_id = l.device_id
+    WHERE l.id_lote = $1
+      AND a.username = $2
+      AND a.can_read = TRUE
+      ${exigirProprietario ? 'AND a.is_owner = TRUE' : ''}
+    LIMIT 1
+  `, [loteId, username]);
 
+  return result.rowCount > 0;
+}
 function avaliarSubconjunto(readings, etapa) {
   if (!readings.length) {
     return { total: 0, pctTemp: 0, pctUmid: 0, pctLux: 0, pctGeral: 0, aprovado: false };
@@ -482,13 +595,245 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       return reply(res, 200, { status: 'ok', database: 'connected' });
     }
 
+  
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/token') {
       const body = await bodyJson(req);
-      if (body.username !== env.DEMO_USER || body.password !== env.DEMO_PASSWORD) {
+
+      const isDefaultDemo = body.username === 'demo' && body.password === 'demo';
+      const isEnvConfigured = body.username === env.DEMO_USER && body.password === env.DEMO_PASSWORD;
+
+      if (!isDefaultDemo && !isEnvConfigured) {
+        logSecurityBlock('2FA_OTP', 'Credenciais inválidas no login primário', { username: body.username }, env);
         return reply(res, 401, { error: 'Invalid credentials' });
       }
-      return reply(res, 200, { access_token: signToken(body.username, env.JWT_SECRET), token_type: 'Bearer', expires_in: 3600 });
+
+      const result = await db.query(
+        `SELECT username, otp_enabled
+         FROM users
+         WHERE username = $1`,
+        [body.username]
+      );
+
+      if (!result.rowCount) {
+        logSecurityBlock('2FA_OTP', 'Usuário não localizado no banco', { username: body.username }, env);
+        return reply(res, 401, { error: 'User not found' });
+      }
+
+      const user = result.rows[0];
+
+      if (!user.otp_enabled) {
+        const setupToken = signToken(
+          user.username,
+          env.JWT_SECRET,
+          undefined,
+          { purpose: 'otp_setup', expiresInSeconds: 600 }
+        );
+
+        return reply(res, 200, {
+          setup_required: true,
+          setup_token: setupToken,
+          message: 'Two-factor authentication setup required'
+        });
+      }
+
+      const challengeToken = signToken(
+        user.username,
+        env.JWT_SECRET,
+        undefined,
+        { purpose: 'otp_challenge', expiresInSeconds: 300 }
+      );
+
+      return reply(res, 200, {
+        otp_required: true,
+        challenge_token: challengeToken
+      });
     }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/otp/setup') {
+      const identity = verifyToken(
+        bearer(req),
+        env.JWT_SECRET,
+        undefined,
+        { purpose: 'otp_setup' }
+      );
+
+      if (!identity) {
+        return reply(res, 401, { error: 'Invalid or expired setup token' });
+      }
+
+      if (!env.OTP_ENCRYPTION_KEY) {
+        return reply(res, 500, { error: 'OTP_ENCRYPTION_KEY is not configured' });
+      }
+
+      const secret = generateTotpSecret();
+      const encryptedSecret = encryptSecret(secret, env.OTP_ENCRYPTION_KEY);
+
+      await db.query(
+        `UPDATE users
+         SET otp_secret_encrypted = $2,
+             otp_enabled = FALSE,
+             otp_last_step = NULL,
+             recovery_codes_hash = '[]'::jsonb
+         WHERE username = $1`,
+        [identity.sub, encryptedSecret]
+      );
+
+      const uri = buildTotpUri({
+        secret,
+        accountName: identity.sub,
+        issuer: 'Manga Trace'
+      });
+
+      const qrCode = await generateQrCode(uri);
+
+      return reply(res, 200, {
+        qr_code: qrCode,
+        secret,
+        message: 'Scan the QR code with your authenticator app'
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/otp/enable') {
+      const identity = verifyToken(
+        bearer(req),
+        env.JWT_SECRET,
+        undefined,
+        { purpose: 'otp_setup' }
+      );
+
+      if (!identity) {
+        return reply(res, 401, { error: 'Invalid or expired setup token' });
+      }
+
+      const body = await bodyJson(req);
+
+      const result = await db.query(
+        `SELECT otp_secret_encrypted
+         FROM users
+         WHERE username = $1
+           AND otp_enabled = FALSE`,
+        [identity.sub]
+      );
+
+      if (!result.rowCount || !result.rows[0].otp_secret_encrypted) {
+        return reply(res, 400, { error: 'Start OTP setup first' });
+      }
+
+      const secret = decryptSecret(
+        result.rows[0].otp_secret_encrypted,
+        env.OTP_ENCRYPTION_KEY
+      );
+
+      const step = getMatchingTotpStep(secret, body.code);
+
+      if (step === null) {
+        logSecurityBlock('2FA_OTP', 'Código TOTP incorreto na ativação do segundo fator', { username: identity.sub }, env);
+        return reply(res, 401, { error: 'Invalid authenticator code' });
+      }
+
+      const recoveryCodes = generateRecoveryCodes(8);
+      const recoveryHashes = recoveryCodes.map(hashRecoveryCode);
+
+      const activation = await db.query(
+        `UPDATE users
+         SET otp_enabled = TRUE,
+             otp_last_step = $2,
+             recovery_codes_hash = $3::jsonb,
+             otp_enrolled_at = NOW()
+         WHERE username = $1
+           AND otp_enabled = FALSE
+           AND otp_secret_encrypted IS NOT NULL
+         RETURNING username`,
+        [identity.sub, step, JSON.stringify(recoveryHashes)]
+      );
+
+      if (!activation.rowCount) {
+        return reply(res, 409, { error: 'OTP activation failed; try again' });
+      }
+
+      return reply(res, 200, {
+        otp_enabled: true,
+        recovery_codes: recoveryCodes,
+        message: 'Save these recovery codes. They will not be shown again.'
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/otp/verify') {
+      const identity = verifyToken(
+        bearer(req),
+        env.JWT_SECRET,
+        undefined,
+        { purpose: 'otp_challenge' }
+      );
+
+      if (!identity) {
+        return reply(res, 401, { error: 'Invalid or expired OTP challenge' });
+      }
+
+      const body = await bodyJson(req);
+
+      const result = await db.query(
+        `SELECT otp_secret_encrypted, recovery_codes_hash
+         FROM users
+         WHERE username = $1
+           AND otp_enabled = TRUE`,
+        [identity.sub]
+      );
+
+      if (!result.rowCount) {
+        return reply(res, 401, { error: 'Two-factor authentication is not enabled' });
+      }
+
+      const user = result.rows[0];
+      let authenticated = false;
+
+      if (body.code && /^\d{6}$/.test(String(body.code))) {
+        const secret = decryptSecret(
+          user.otp_secret_encrypted,
+          env.OTP_ENCRYPTION_KEY
+        );
+
+        const step = getMatchingTotpStep(secret, body.code);
+
+        if (step !== null) {
+          authenticated = await consumeTotpStep(db, identity.sub, step);
+        }
+      } else if (body.recovery_code) {
+        const hashes = user.recovery_codes_hash || [];
+        const matchingHash = hashes.find(hash =>
+          verifyRecoveryCode(body.recovery_code, hash)
+        );
+
+        if (matchingHash) {
+          const consumed = await db.query(
+            `UPDATE users
+             SET recovery_codes_hash = recovery_codes_hash - $2
+             WHERE username = $1
+               AND recovery_codes_hash @> jsonb_build_array($2::text)
+             RETURNING username`,
+            [identity.sub, matchingHash]
+          );
+
+          authenticated = consumed.rowCount === 1;
+        }
+      }
+
+      if (!authenticated) {
+        logSecurityBlock('2FA_OTP', 'Código OTP ou de recuperação inválido, expirado ou já utilizado (replay)', { username: identity.sub }, env);
+        return reply(res, 401, {
+          error: 'Invalid, expired or already used authentication code'
+        });
+      }
+
+      const accessToken = signToken(identity.sub, env.JWT_SECRET);
+
+      return reply(res, 200, {
+        access_token: accessToken,
+        token_type: 'Bearer',
+        expires_in: 3600
+      });
+    }
+
 
     if (req.method === 'POST' && url.pathname === '/api/v1/ingest') {
       const expected = env.DEVICE_API_KEY;
@@ -528,7 +873,10 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const access = await db.query(`SELECT d.device_id, d.name, d.created_at, d.last_seen_at
         FROM devices d JOIN device_access a USING(device_id)
         WHERE a.username = $1 AND a.device_id = $2 AND a.can_read = TRUE`, [identity.sub, deviceId]);
-      if (!access.rowCount) return reply(res, 403, { error: 'You do not have access to this device' });
+      if (!access.rowCount) {
+        logSecurityBlock('IDOR_DEVICE', 'Acesso negado: dispositivo pertence a outro usuário ou não existe', { username: identity.sub, device_id: deviceId }, env);
+        return reply(res, 403, { error: 'You do not have access to this device' });
+      }
       if (url.pathname.endsWith('/readings')) {
         const readings = await db.query(`SELECT device_id, sequence, timestamp, temperature_c, humidity_percent, luminosity_lux
           FROM readings WHERE device_id = $1 ORDER BY timestamp DESC LIMIT 100`, [deviceId]);
@@ -561,20 +909,26 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const apenasComSelo = url.searchParams.get('apenas_com_selo') === 'true' || url.searchParams.get('status') === 'aprovado';
       const statusFilter = url.searchParams.get('status');
 
-      let query = `
+            let query = `
         SELECT l.id_lote, l.codigo_lote, l.nome, l.variedade, l.device_id, l.etapa_atual,
                l.data_inicio, l.data_colheita, l.data_fim, l.percentual_pomar, l.percentual_estoque,
                l.status_selo, l.percentual_conformidade, l.created_at
         FROM lotes l
-        LEFT JOIN device_access a ON (l.device_id = a.device_id AND a.username = $1)
+        INNER JOIN device_access a
+          ON l.device_id = a.device_id
+        WHERE a.username = $1
+          AND a.can_read = TRUE
       `;
+
       const params = [identity.sub];
+
       if (apenasComSelo) {
-        query += ` WHERE l.status_selo = 'aprovado'`;
+        query += ` AND l.status_selo = 'aprovado'`;
       } else if (statusFilter) {
         params.push(statusFilter);
-        query += ` WHERE l.status_selo = $2`;
+        query += ` AND l.status_selo = $2`;
       }
+
       query += ` ORDER BY l.id_lote ASC`;
 
       const lotes = await db.query(query, params);
@@ -593,6 +947,39 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const colheita = body.data_colheita ? new Date(body.data_colheita).toISOString() : null;
       const fim = body.data_fim ? new Date(body.data_fim).toISOString() : null;
       const deviceId = body.device_id || 'esp32c3-01';
+      const acesso = await db.query(`
+        SELECT device_id
+        FROM device_access
+        WHERE username = $1
+          AND device_id = $2
+          AND can_read = TRUE
+          AND is_owner = TRUE
+        LIMIT 1
+      `, [identity.sub, deviceId]);
+
+      if (acesso.rowCount === 0) {
+        logSecurityBlock('IDOR_DEVICE', 'Criação negada: usuário não possui acesso ao dispositivo informado', { username: identity.sub, device_id: deviceId }, env);
+        return reply(res, 403, {
+          error: 'Você não tem permissão para criar lotes neste dispositivo'
+        });
+      }
+      
+      const possuiPropriedade = await db.query(`
+        SELECT 1
+        FROM device_access
+        WHERE username = $1
+          AND device_id = $2
+          AND can_read = TRUE
+          AND is_owner = TRUE
+        LIMIT 1
+      `, [identity.sub, deviceId]);
+
+      if (!possuiPropriedade.rowCount) {
+        logSecurityBlock('IDOR_DEVICE', 'Criação negada: usuário não é proprietário do dispositivo informado', { username: identity.sub, device_id: deviceId }, env);
+        return reply(res, 403, {
+          error: 'Você não tem permissão para criar lotes neste dispositivo.'
+        });
+      }
 
       const result = await db.query(`
         INSERT INTO lotes(codigo_lote, nome, variedade, device_id, etapa_atual, data_inicio, data_colheita, data_fim)
@@ -607,7 +994,21 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
       const loteId = Number(loteQualidadeMatch[1]);
-      const loteRes = await db.query(`SELECT * FROM lotes WHERE id_lote = $1`, [loteId]);
+      const possuiAcesso = await verificarAcessoLote(
+        db,
+        identity.sub,
+        loteId
+      );
+
+      if (!possuiAcesso) {
+        logSecurityBlock('IDOR_LOTE', 'Acesso negado: lote pertence a outro produtor/dispositivo', { username: identity.sub, lote_id: loteId, operacao: 'GET_QUALIDADE' }, env);
+        return reply(res, 404, { error: 'Lote não encontrado' });
+      }
+
+      const loteRes = await db.query(
+        `SELECT * FROM lotes WHERE id_lote = $1`,
+        [loteId]
+      );
       if (!loteRes.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
       const lote = loteRes.rows[0];
 
@@ -640,6 +1041,14 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
       const loteId = Number(loteEtapaMatch[1]);
+      const possuiPropriedade = await verificarAcessoLote(
+        db, identity.sub, loteId, true
+      );
+
+      if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
+        return reply(res, 404, { error: 'Lote não encontrado' });
+      }
       const body = await bodyJson(req);
       if (!body.codigo_lote || !body.nome) return reply(res, 400, { error: 'codigo_lote e nome são obrigatórios' });
       const etapa = ['pomar', 'estoque'].includes(body.etapa_atual) ? body.etapa_atual : 'pomar';
@@ -663,6 +1072,14 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
       const loteId = Number(loteEtapaMatch[1]);
+      const possuiPropriedade = await verificarAcessoLote(
+        db, identity.sub, loteId, true
+      );
+
+      if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
+        return reply(res, 404, { error: 'Lote não encontrado' });
+      }
       const result = await db.query(`DELETE FROM lotes WHERE id_lote = $1 RETURNING id_lote`, [loteId]);
       if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
       return reply(res, 200, { deleted: true, id_lote: loteId });
@@ -673,6 +1090,17 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
       const loteId = Number(loteColherMatch[1]);
+      const possuiPropriedade = await verificarAcessoLote(
+        db,
+        identity.sub,
+        loteId,
+        true
+      );
+
+if (!possuiPropriedade) {
+  logSecurityBlock('IDOR_LOTE', 'Comando de colheita negado: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'COLHER' }, env);
+  return reply(res, 404, { error: 'Lote não encontrado' });
+}
       const now = new Date().toISOString();
       const result = await db.query(`
         UPDATE lotes SET etapa_atual = 'estoque', data_colheita = COALESCE(data_colheita, $1)
@@ -686,6 +1114,14 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       const identity = verifyToken(bearer(req), env.JWT_SECRET);
       if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
       const loteId = Number(loteEtapaMatch[1]);
+      const possuiPropriedade = await verificarAcessoLote(
+        db, identity.sub, loteId, true
+      );
+
+      if (!possuiPropriedade) {
+        logSecurityBlock('IDOR_LOTE', 'Alteração negada: usuário não é proprietário do lote', { username: identity.sub, lote_id: loteId, operacao: 'PUT' }, env);
+        return reply(res, 404, { error: 'Lote não encontrado' });
+      }
       const body = await bodyJson(req);
       const updates = [];
       const values = [];

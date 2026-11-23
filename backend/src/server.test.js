@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiServer, avaliarQualidadeLote } from './server.js';
+import { signToken } from './security.js';
 
 function mockDb() {
   const lotesState = [
@@ -121,13 +122,39 @@ function mockDb() {
       if (sql.includes('FROM readings r JOIN device_access')) return { rowCount: 1, rows: [{ device_id: 'esp32c3-01', sequence: 7, luminosity_lux: 45000 }] };
       
       // Lotes e Filtros
+      // Verifica autorização de acesso ao lote (proteção contra IDOR)
+      if (/SELECT\s+l\.id_lote\s+FROM\s+lotes\s+l/i.test(sql)) {
+        const [loteId, username] = params;
+
+        const autorizado =
+          username === 'demo' &&
+          lotesState.some(l => l.id_lote === Number(loteId));
+
+        return {
+          rowCount: autorizado ? 1 : 0,
+          rows: autorizado ? [{ id_lote: Number(loteId) }] : []
+        };
+      }
+
+      
       if (sql.includes('FROM lotes l')) {
+        const username = params[0];
+
+        if (username !== 'demo') {
+          return { rowCount: 0, rows: [] };
+        }
+
         if (sql.includes("status_selo = 'aprovado'")) {
-          const comSelo = lotesState.filter(l => l.status_selo === 'aprovado');
+          const comSelo = lotesState.filter(
+            l => l.status_selo === 'aprovado'
+          );
+
           return { rowCount: comSelo.length, rows: comSelo };
         }
+
         return { rowCount: lotesState.length, rows: lotesState };
       }
+
       if (sql.includes('SELECT * FROM lotes WHERE id_lote')) {
         const found = lotesState.find(l => l.id_lote === params[0]);
         return { rowCount: found ? 1 : 0, rows: found ? [found] : [] };
@@ -140,6 +167,9 @@ function mockDb() {
       }
       if (sql.includes('UPDATE lotes')) {
         return { rowCount: 1, rows: [lotesState[0]] };
+      }
+      if (sql.includes('SELECT username, otp_enabled')) {
+        return { rowCount: 1, rows: [{ username: params[0], otp_enabled: true }] };
       }
 
       throw new Error(`Unexpected query in route test: ${sql}`);
@@ -212,7 +242,7 @@ test('Selo de Qualidade da Manga: Regra das Duas Etapas (>= 70% no Pomar E no Es
 });
 
 test('HTTP routes cover login, protected readings, device authorization, luminosity and health', async t => {
-  const { base } = await startTestServer(t);
+  const { base, env } = await startTestServer(t);
 
   const health = await fetch(`${base}/health`);
   assert.equal(health.status, 200);
@@ -222,7 +252,11 @@ test('HTTP routes cover login, protected readings, device authorization, luminos
     body: JSON.stringify({ username: 'demo', password: 'test-password' }),
   });
   assert.equal(login.status, 200);
-  const { access_token: token } = await login.json();
+  const loginBody = await login.json();
+  assert.equal(loginBody.otp_required, true);
+  assert.ok(loginBody.challenge_token);
+
+  const token = signToken('demo', env.JWT_SECRET);
 
   const latest = await fetch(`${base}/api/v1/readings/latest`, {
     headers: { authorization: `Bearer ${token}` },
@@ -233,12 +267,8 @@ test('HTTP routes cover login, protected readings, device authorization, luminos
 });
 
 test('HTTP routes: Lotes com Selo (Filtro) e Auditoria das Duas Etapas', async t => {
-  const { base } = await startTestServer(t);
-  const login = await fetch(`${base}/api/v1/auth/token`, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: 'demo', password: 'test-password' }),
-  });
-  const { access_token: token } = await login.json();
+  const { base, env } = await startTestServer(t);
+  const token = signToken('demo', env.JWT_SECRET);
 
   // 1. Listagem completa de todos os lotes
   const lotesRes = await fetch(`${base}/api/v1/lotes`, {
@@ -300,4 +330,67 @@ test('ingest route rejects bad device key and accepts sensor payload with lumino
     method: 'POST', headers: { 'content-type': 'application/json', 'x-device-key': 'test-device-key' }, body: JSON.stringify(payload),
   });
   assert.equal(accepted.status, 201);
+});
+
+test('IDOR: impede usuário sem autorização de consultar lote de outro usuário', async t => {
+  const { base, env } = await startTestServer(t);
+
+  const token = signToken(
+    'usuario-invasor',
+    env.JWT_SECRET
+  );
+
+  const response = await fetch(`${base}/api/v1/lotes/1/qualidade`, {
+    headers: {
+      authorization: `Bearer ${token}`
+    }
+  });
+
+  assert.equal(response.status, 404);
+
+  const body = await response.json();
+  assert.equal(body.error, 'Lote não encontrado');
+});
+
+test('IDOR: impede usuário sem autorização de alterar ou excluir lote', async t => {
+  const { base, env } = await startTestServer(t);
+
+  const token = signToken('usuario-invasor', env.JWT_SECRET);
+
+  const headers = {
+    authorization: `Bearer ${token}`,
+    'content-type': 'application/json'
+  };
+
+  const alteracao = await fetch(`${base}/api/v1/lotes/1`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({})
+  });
+
+  assert.equal(alteracao.status, 404);
+
+  const exclusao = await fetch(`${base}/api/v1/lotes/1`, {
+    method: 'DELETE',
+    headers
+  });
+
+  assert.equal(exclusao.status, 404);
+});
+
+test('IDOR: impede usuário sem autorização de registrar colheita', async t => {
+  const { base, env } = await startTestServer(t);
+
+  const token = signToken('usuario-invasor', env.JWT_SECRET);
+
+  const response = await fetch(`${base}/api/v1/lotes/1/colher`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({})
+  });
+
+  assert.equal(response.status, 404);
 });

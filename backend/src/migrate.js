@@ -67,12 +67,47 @@ export async function migrate(db, { demoUser, demoDeviceId }) {
     CREATE INDEX IF NOT EXISTS lotes_device_idx ON lotes(device_id);
   `);
 
+  // Estrutura adicional para autenticação em dois fatores e auditoria.
+  await db.query(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS password_hash TEXT,
+      ADD COLUMN IF NOT EXISTS otp_secret_encrypted TEXT,
+      ADD COLUMN IF NOT EXISTS otp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS otp_last_step BIGINT,
+      ADD COLUMN IF NOT EXISTS recovery_codes_hash JSONB NOT NULL DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS otp_enrolled_at TIMESTAMPTZ;
+
+    ALTER TABLE device_access
+      ADD COLUMN IF NOT EXISTS is_owner BOOLEAN NOT NULL DEFAULT FALSE;
+
+    CREATE TABLE IF NOT EXISTS security_events (
+      id BIGSERIAL PRIMARY KEY,
+      actor_username VARCHAR(80) REFERENCES users(username) ON DELETE SET NULL,
+      event_type VARCHAR(80) NOT NULL,
+      target_type VARCHAR(80),
+      target_id TEXT,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_security_events_created_at
+      ON security_events (created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_security_events_actor_created_at
+      ON security_events (actor_username, created_at DESC);
+  `);
+
   if (demoUser) {
     await db.query(`INSERT INTO users(username, role) VALUES($1, 'admin') ON CONFLICT(username) DO NOTHING`, [demoUser]);
   }
   if (demoUser && demoDeviceId) {
     await db.query(`INSERT INTO devices(device_id) VALUES($1) ON CONFLICT(device_id) DO NOTHING`, [demoDeviceId]);
-    await db.query(`INSERT INTO device_access(username, device_id) VALUES($1, $2) ON CONFLICT DO NOTHING`, [demoUser, demoDeviceId]);
+    await db.query(`
+      INSERT INTO device_access(username, device_id, is_owner)
+      VALUES($1, $2, TRUE)
+      ON CONFLICT(username, device_id)
+      DO UPDATE SET is_owner = TRUE
+    `, [demoUser, demoDeviceId]);
 
     // Seed de lotes com regra das duas etapas
     await db.query(`
