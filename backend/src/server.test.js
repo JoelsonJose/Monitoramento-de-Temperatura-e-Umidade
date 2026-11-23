@@ -168,6 +168,9 @@ function mockDb() {
       if (sql.includes('UPDATE lotes')) {
         return { rowCount: 1, rows: [lotesState[0]] };
       }
+      if (sql.includes('SELECT username, otp_enabled')) {
+        return { rowCount: 1, rows: [{ username: params[0], otp_enabled: true }] };
+      }
 
       throw new Error(`Unexpected query in route test: ${sql}`);
     },
@@ -239,7 +242,7 @@ test('Selo de Qualidade da Manga: Regra das Duas Etapas (>= 70% no Pomar E no Es
 });
 
 test('HTTP routes cover login, protected readings, device authorization, luminosity and health', async t => {
-  const { base } = await startTestServer(t);
+  const { base, env } = await startTestServer(t);
 
   const health = await fetch(`${base}/health`);
   assert.equal(health.status, 200);
@@ -249,7 +252,11 @@ test('HTTP routes cover login, protected readings, device authorization, luminos
     body: JSON.stringify({ username: 'demo', password: 'test-password' }),
   });
   assert.equal(login.status, 200);
-  const { access_token: token } = await login.json();
+  const loginBody = await login.json();
+  assert.equal(loginBody.otp_required, true);
+  assert.ok(loginBody.challenge_token);
+
+  const token = signToken('demo', env.JWT_SECRET);
 
   const latest = await fetch(`${base}/api/v1/readings/latest`, {
     headers: { authorization: `Bearer ${token}` },
@@ -260,12 +267,8 @@ test('HTTP routes cover login, protected readings, device authorization, luminos
 });
 
 test('HTTP routes: Lotes com Selo (Filtro) e Auditoria das Duas Etapas', async t => {
-  const { base } = await startTestServer(t);
-  const login = await fetch(`${base}/api/v1/auth/token`, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: 'demo', password: 'test-password' }),
-  });
-  const { access_token: token } = await login.json();
+  const { base, env } = await startTestServer(t);
+  const token = signToken('demo', env.JWT_SECRET);
 
   // 1. Listagem completa de todos os lotes
   const lotesRes = await fetch(`${base}/api/v1/lotes`, {
