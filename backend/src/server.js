@@ -64,6 +64,15 @@ function createInMemoryDb() {
   console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
   const demoUsername = process.env.DEMO_USER || 'demo';
   const usersState = {
+    demo: {
+      username: 'demo',
+      role: 'admin',
+      otp_enabled: false,
+      otp_secret_encrypted: null,
+      otp_last_step: null,
+      recovery_codes_hash: [],
+      otp_enrolled_at: null
+    },
     [demoUsername]: {
       username: demoUsername,
       role: 'admin',
@@ -343,14 +352,14 @@ function createInMemoryDb() {
       if (sql.includes('FROM device_access')) {
         const username = params[0];
         const devId = params[1];
-        if (username === demoUsername && (!devId || devId === 'esp32c3-01')) {
+        if ((username === 'demo' || username === demoUsername) && (!devId || devId === 'esp32c3-01')) {
           return { rowCount: 1, rows: [{ username, device_id: 'esp32c3-01', is_owner: true, can_read: true }] };
         }
         return { rowCount: 0, rows: [] };
       }
       if (sql.includes('INNER JOIN device_access a ON a.device_id = l.device_id')) {
         const [loteId, username] = params;
-        if (username === demoUsername && lotesState.some(l => l.id_lote === Number(loteId))) {
+        if ((username === 'demo' || username === demoUsername) && lotesState.some(l => l.id_lote === Number(loteId))) {
           return { rowCount: 1, rows: [{ id_lote: Number(loteId) }] };
         }
         return { rowCount: 0, rows: [] };
@@ -590,10 +599,10 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
     if (req.method === 'POST' && url.pathname === '/api/v1/auth/token') {
       const body = await bodyJson(req);
 
-      if (
-        body.username !== env.DEMO_USER ||
-        body.password !== env.DEMO_PASSWORD
-      ) {
+      const isDefaultDemo = body.username === 'demo' && body.password === 'demo';
+      const isEnvConfigured = body.username === env.DEMO_USER && body.password === env.DEMO_PASSWORD;
+
+      if (!isDefaultDemo && !isEnvConfigured) {
         logSecurityBlock('2FA_OTP', 'Credenciais inválidas no login primário', { username: body.username }, env);
         return reply(res, 401, { error: 'Invalid credentials' });
       }
