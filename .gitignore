@@ -4,3 +4,6 @@ credentials.h
 .env
 backend/node_modules/
 /monitoramento/
+node_modules/
+.env.*
+!.env.example
