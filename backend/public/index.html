@@ -396,6 +396,43 @@
           <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" value="demo" required></label>
           <button class="primary" id="login-button" type="submit">Entrar no painel</button>
         </form>
+
+        <!-- FORMULÁRIO 2FA: DESAFIO OTP (TOTP OU RECOVERY CODE) -->
+        <form id="otp-challenge-form" class="hidden">
+          <div style="background:#eaf4ee;border:1px solid #b7dcbe;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#236c4a;">
+            🔒 <strong>Autenticação em Dois Fatores (2FA)</strong><br>
+            Digite o código de 6 dígitos do aplicativo autenticador ou um código de recuperação.
+          </div>
+          <label class="field" id="field-otp-code"><span>Código TOTP (6 dígitos)</span><input name="code" id="otp-code-input" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code"></label>
+          <label class="field hidden" id="field-recovery-code"><span>Código de Recuperação (12 caracteres)</span><input name="recovery_code" id="recovery-code-input" placeholder="XXXX-XXXX-XXXX" autocomplete="off"></label>
+          <button class="primary" id="otp-verify-button" type="submit">Validar Código 2FA</button>
+          <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px;">
+            <a href="#" id="toggle-recovery-btn" style="color:var(--green);font-weight:700;text-decoration:none;">Usar código de recuperação</a>
+            <a href="#" id="cancel-otp-btn" style="color:var(--muted);text-decoration:none;">Voltar</a>
+          </div>
+        </form>
+
+        <!-- FORMULÁRIO 2FA: CONFIGURAÇÃO INICIAL (QR CODE) -->
+        <form id="otp-setup-form" class="hidden">
+          <div style="background:#fef7e7;border:1px solid #fedc9b;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:#92580a;">
+            ⚙️ <strong>Configuração do Segundo Fator (TOTP)</strong><br>
+            Escaneie o QR Code abaixo no Google Authenticator ou Authy e confirme o código gerado.
+          </div>
+          <div id="otp-qr-container" style="text-align:center;margin:10px 0;"></div>
+          <p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;">Chave manual: <code id="otp-secret-text" style="background:#f1f4ed;padding:2px 6px;border-radius:4px;font-weight:700;"></code></p>
+          <div id="otp-setup-inputs">
+            <label class="field"><span>Código de 6 dígitos gerado no app</span><input name="code" id="otp-setup-code-input" inputmode="numeric" maxlength="6" placeholder="000000"></label>
+            <button class="primary" id="otp-enable-button" type="submit">Ativar 2FA e Gerar Códigos</button>
+          </div>
+          <div id="recovery-codes-display" class="hidden" style="margin-top:14px;background:#fbfcf9;border:1px solid #dce4db;border-radius:10px;padding:12px;">
+            <p style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:6px;">⚠️ Guarde seus códigos de recuperação de uso único:</p>
+            <div id="recovery-codes-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-family:monospace;font-size:12px;color:var(--green-dark);"></div>
+            <button class="primary" id="otp-finish-setup-btn" type="button" style="margin-top:12px;">Ir para o Login</button>
+          </div>
+          <div style="text-align:center;margin-top:12px;font-size:12px;">
+            <a href="#" id="cancel-setup-btn" style="color:var(--muted);text-decoration:none;">Cancelar</a>
+          </div>
+        </form>
         <p class="login-status" id="login-status" role="status" aria-live="polite">Acesso restrito à equipe do projeto.</p>
         <p class="login-foot">Manga Trace · Monitoramento IoT Plug & Play de Ponta a Ponta.</p>
       </section>
@@ -865,14 +902,43 @@
     notice.classList.toggle('error',isError);
   }
 
+  let currentChallengeToken = '';
+  let currentSetupToken = '';
+
+  function resetLoginForms() {
+    $('#login-form').classList.remove('hidden');
+    $('#otp-challenge-form').classList.add('hidden');
+    $('#otp-setup-form').classList.add('hidden');
+    $('#login-form').reset();
+    $('#otp-challenge-form').reset();
+    $('#otp-setup-form').reset();
+    $('#recovery-codes-display').classList.add('hidden');
+    $('#otp-setup-inputs').classList.remove('hidden');
+    currentChallengeToken = '';
+    currentSetupToken = '';
+  }
+
   function showLogin(message='',isError=false){
     if(refreshTimer){clearInterval(refreshTimer);refreshTimer=0;}
     token='';
     appView.classList.add('hidden');
     loginView.classList.remove('hidden');
+    resetLoginForms();
     loginStatus.textContent=message||'Acesso restrito à equipe do projeto.';
     loginStatus.classList.toggle('error',isError);
-    $('#login-form').reset();
+  }
+
+  function enterAuthenticatedApp(accessToken) {
+    token = accessToken;
+    loginView.classList.add('hidden');
+    appView.classList.remove('hidden');
+    switchScreen('dashboard');
+    if(refreshTimer) clearInterval(refreshTimer);
+    refreshTimer=setInterval(()=>{
+      if(!screenDashboard.classList.contains('hidden')){
+        refreshDashboard();
+      }
+    },10000);
   }
 
   $('#login-form').addEventListener('submit',async event=>{
@@ -889,16 +955,36 @@
         body:JSON.stringify(formData)
       });
       const body=await readJson(response);
-      token=body.access_token;
-      loginView.classList.add('hidden');
-      appView.classList.remove('hidden');
-      switchScreen('dashboard');
-      if(refreshTimer)clearInterval(refreshTimer);
-      refreshTimer=setInterval(()=>{
-        if(!screenDashboard.classList.contains('hidden')){
-          refreshDashboard();
-        }
-      },10000);
+
+      if (body.setup_required) {
+        currentSetupToken = body.setup_token;
+        $('#login-form').classList.add('hidden');
+        $('#otp-setup-form').classList.remove('hidden');
+        loginStatus.textContent = 'Carregando chave de segurança 2FA…';
+        
+        const setupRes = await fetch('/api/v1/auth/otp/setup', {
+          method: 'POST',
+          headers: { 'authorization': `Bearer ${currentSetupToken}` }
+        });
+        const setupData = await readJson(setupRes);
+        $('#otp-qr-container').innerHTML = `<img src="${setupData.qr_code}" alt="QR Code 2FA" style="max-width:180px;height:auto;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);display:inline-block;">`;
+        $('#otp-secret-text').textContent = setupData.secret;
+        loginStatus.textContent = 'Escaneie o QR Code no seu app autenticador.';
+        return;
+      }
+
+      if (body.otp_required) {
+        currentChallengeToken = body.challenge_token;
+        $('#login-form').classList.add('hidden');
+        $('#otp-challenge-form').classList.remove('hidden');
+        $('#otp-code-input').focus();
+        loginStatus.textContent = 'Informe o código de 6 dígitos gerado no app.';
+        return;
+      }
+
+      if (body.access_token) {
+        enterAuthenticatedApp(body.access_token);
+      }
     }catch(error){
       loginStatus.textContent=error.message||friendlyError();
       loginStatus.classList.add('error');
@@ -906,6 +992,112 @@
       loginButton.disabled=false;
       loginButton.textContent='Entrar no painel';
     }
+  });
+
+  // Validação do Desafio 2FA (TOTP ou Recovery Code)
+  $('#otp-challenge-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const btn = $('#otp-verify-button');
+    btn.disabled = true;
+    btn.textContent = 'Validando OTP…';
+    loginStatus.textContent = 'Verificando código de segurança…';
+    loginStatus.classList.remove('error');
+
+    const code = $('#otp-code-input').value.trim();
+    const recoveryCode = $('#recovery-code-input').value.trim();
+    const payload = {};
+    if (recoveryCode) {
+      payload.recovery_code = recoveryCode;
+    } else {
+      payload.code = code;
+    }
+
+    try {
+      const response = await fetch('/api/v1/auth/otp/verify', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': `Bearer ${currentChallengeToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const body = await readJson(response);
+      if (body.access_token) {
+        enterAuthenticatedApp(body.access_token);
+      }
+    } catch(err) {
+      loginStatus.textContent = err.message || 'Código 2FA inválido, expirado ou já utilizado.';
+      loginStatus.classList.add('error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Validar Código 2FA';
+    }
+  });
+
+  // Ativação de 2FA (Setup inicial)
+  $('#otp-setup-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const btn = $('#otp-enable-button');
+    btn.disabled = true;
+    btn.textContent = 'Ativando…';
+    loginStatus.textContent = 'Confirmando código com o servidor…';
+    loginStatus.classList.remove('error');
+
+    const code = $('#otp-setup-code-input').value.trim();
+    try {
+      const response = await fetch('/api/v1/auth/otp/enable', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': `Bearer ${currentSetupToken}`
+        },
+        body: JSON.stringify({ code })
+      });
+      const body = await readJson(response);
+      if (body.otp_enabled && body.recovery_codes) {
+        $('#otp-setup-inputs').classList.add('hidden');
+        $('#recovery-codes-display').classList.remove('hidden');
+        const listEl = $('#recovery-codes-list');
+        listEl.innerHTML = body.recovery_codes.map(c => `<div>• ${c}</div>`).join('');
+        loginStatus.textContent = '2FA ativado com sucesso! Salve seus códigos de recuperação.';
+      }
+    } catch(err) {
+      loginStatus.textContent = err.message || 'Falha ao ativar 2FA. Verifique o código digitado.';
+      loginStatus.classList.add('error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Ativar 2FA e Gerar Códigos';
+    }
+  });
+
+  $('#otp-finish-setup-btn').addEventListener('click', () => {
+    showLogin('2FA configurado! Faça login com seu autenticador.');
+  });
+
+  $('#toggle-recovery-btn').addEventListener('click', event => {
+    event.preventDefault();
+    const fieldOtp = $('#field-otp-code');
+    const fieldRec = $('#field-recovery-code');
+    const isUsingRec = !fieldRec.classList.contains('hidden');
+    if (isUsingRec) {
+      fieldRec.classList.add('hidden');
+      fieldOtp.classList.remove('hidden');
+      $('#toggle-recovery-btn').textContent = 'Usar código de recuperação';
+    } else {
+      fieldRec.classList.remove('hidden');
+      fieldOtp.classList.add('hidden');
+      $('#toggle-recovery-btn').textContent = 'Usar código do autenticador (TOTP)';
+    }
+  });
+
+  $('#cancel-otp-btn').addEventListener('click', event => {
+    event.preventDefault();
+    showLogin();
+  });
+
+  $('#cancel-setup-btn').addEventListener('click', event => {
+    event.preventDefault();
+    showLogin();
   });
 
   $('#logout-button').addEventListener('click',()=>showLogin());
