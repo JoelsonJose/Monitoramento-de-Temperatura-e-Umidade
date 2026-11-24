@@ -39,10 +39,6 @@ The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, rep
 
 Esta seção documenta a arquitetura em nuvem, esteira CI/CD, modelo de dados, segurança, monitoramento e estimativa de custos do sistema **Manga Trace**, atendendo aos requisitos da 2ª unidade de Projeto Integrador (Prof. Ronierison Maciel).
 
-O relatório técnico completo em PDF e ABNT está disponível em:
-- Documento PDF: [`docs/relatorio-nuvem-manga-trace.pdf`](docs/relatorio-nuvem-manga-trace.pdf) (e cópia na raiz [`relatorio-nuvem-manga-trace.pdf`](relatorio-nuvem-manga-trace.pdf))
-- Documento Markdown: [`docs/relatorio-nuvem-manga-trace.md`](docs/relatorio-nuvem-manga-trace.md)
-
 ### 1. URL do Sistema Publicado
 - **Dashboard SPA & API (HTTPS):** [`https://monitoramento-iot-api.onrender.com`](https://monitoramento-iot-api.onrender.com)
 - **Endpoint Público de Verificação de Saúde:** [`https://monitoramento-iot-api.onrender.com/health`](https://monitoramento-iot-api.onrender.com/health)

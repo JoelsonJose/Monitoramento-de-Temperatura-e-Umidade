@@ -8,10 +8,7 @@ node_modules/
 .env.*
 !.env.example
 
-# Relatórios gerados para entrega (PDF, DOCX e HTML) - mantidos apenas localmente
-docs/relatorio-nuvem-*.pdf
-docs/relatorio-nuvem-*.docx
-docs/relatorio-nuvem-*.html
-relatorio-nuvem-*.pdf
-relatorio-nuvem-*.docx
-relatorio-nuvem-*.html
+# Relatórios gerados para entrega (PDF, DOCX, HTML e MD) - mantidos apenas localmente
+docs/relatorio-nuvem-*
+relatorio-nuvem-*
+~$*
