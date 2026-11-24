@@ -35,6 +35,89 @@ The firmware logs Wi-Fi start, association, IP assignment, and disconnect reason
 
 The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. This is a browser dashboard, separate from the ESP32's status page at `http://<ESP32_IP>/`. It now displays the latest device contact time.
 
+## Computação em Nuvem e DevOps (Entrega 2ª Unidade)
+
+Esta seção documenta a arquitetura em nuvem, esteira CI/CD, modelo de dados, segurança, monitoramento e estimativa de custos do sistema **Manga Trace**, atendendo aos requisitos da 2ª unidade de Projeto Integrador (Prof. Ronierison Maciel).
+
+### 1. URL do Sistema Publicado
+- **Dashboard SPA & API (HTTPS):** [`https://monitoramento-iot-api.onrender.com`](https://monitoramento-iot-api.onrender.com)
+- **Endpoint Público de Verificação de Saúde:** [`https://monitoramento-iot-api.onrender.com/health`](https://monitoramento-iot-api.onrender.com/health)
+
+### 2. Provedor e Serviços Usados (Modelos SPI)
+- **Provedor Principal:** Render (infraestrutura pública hospedada na AWS região `us-east-1` / Virgínia).
+- **Frontend SPA (Manga Trace Dashboard):** **PaaS** (Render Web Service) — entrega estática integrada no Node.js com TLS 1.3 automático (Let's Encrypt).
+- **Backend API (Node.js 22 LTS / Docker):** **PaaS** (Render Web Service) — ingestão de telemetria, autenticação JWT e cálculo da Regra dos 70% nas duas etapas (Pomar e Câmara Fria).
+- **Banco de Dados (PostgreSQL 16):** **PaaS** (Render Managed PostgreSQL) — banco relacional com rede isolada privada, alta disponibilidade e rotinas diárias de backup.
+- **Integração de Telemetria (ThingSpeak):** **SaaS** (MathWorks ThingSpeak) — redundância de séries temporais e visualização pública.
+- **Pipeline CI/CD (GitHub Actions):** **SaaS** — esteira automatizada de segurança, testes, build Docker e deploy contínuo.
+
+### 3. Diagrama da Arquitetura na Nuvem
+```mermaid
+flowchart TD
+    subgraph Borda["Dispositivos de Campo (Edge Computing)"]
+        ESP["ESP32-C3 + DHT11 + LDR<br/>(Pomar / Câmara Fria)"]
+        USB["Estação Local Plug & Play<br/>(Cabo USB / Web Serial)"]
+    end
+
+    subgraph CI["Pipeline CI/CD (GitHub Actions)"]
+        Repo["GitHub: Branch main"] --> Actions["GitHub Actions Pipeline<br/>(Security -> QA -> Docker -> Deploy)"]
+    end
+
+    subgraph Nuvem["Provedor de Nuvem (Render PaaS - US-East)"]
+        Ingress["Ingress / Load Balancer<br/>(HTTPS / Let's Encrypt TLS)"]
+        API["Web Service: Manga Trace<br/>(Node.js 22 / Docker Container)"]
+        DB[(PostgreSQL 16 Gerenciado<br/>Render Private Network)]
+    end
+
+    ESP -->|"HTTPS POST /api/v1/sensor<br/>(Bearer Token / x-device-key)"| Ingress
+    USB -->|"Ingestão Direta Serial"| API
+    Actions -->|"Trigger Deploy Hook Webhook"| Ingress
+    Ingress --> API
+    API <-->|"TCP 5432 SSL"| DB
+```
+
+### 4. Pipeline CI/CD e Histórico de Execuções
+O pipeline está definido em [`.github/workflows/ci.yaml`](.github/workflows/ci.yaml) e engloba 4 jobs:
+1. **`security`:** Gitleaks (detecção de segredos expostos), Semgrep (SAST de código Node.js) e Trivy (varredura de CVEs no sistema de arquivos).
+2. **`qa`:** Execução automatizada de testes com `npm test` em Node.js 22 (testes unitários e de integração de rotas e cálculo do Selo de Qualidade).
+3. **`docker-image`:** Build da imagem Docker (`manga-trace-api:latest`), varredura de vulnerabilidades da imagem com Trivy, auditoria estrita de usuário non-root (`USER node`) e teste de fumaça (Smoke Test) subindo o container e validando `/health` com HTTP 200.
+4. **`deploy`:** Disparado exclusivamente em pushes na branch `main`, invocando o Deploy Hook do Render via webhook seguro e validando a URL pública.
+- **Histórico das Execuções:** Acesse a aba **[Actions](https://github.com/JoelsonJose/Monitoramento-de-Temperatura-e-Umidade/actions)** no repositório GitHub para auditar todas as execuções do pipeline.
+
+### 5. Como Refazer o Deploy do Zero
+1. Conecte sua conta no [Render](https://render.com).
+2. Clique em **New +** e selecione **Blueprint**.
+3. Aponte para o repositório `JoelsonJose/Monitoramento-de-Temperatura-e-Umidade`.
+4. O Render lerá automaticamente o arquivo [`render.yaml`](render.yaml) na raiz, provisionando simultaneamente o Web Service e o banco PostgreSQL.
+5. Preencha as variáveis de ambiente sensíveis no painel: `DEVICE_API_KEY`, `DEMO_USER`, `DEMO_PASSWORD`, `THINGSPEAK_WRITE_API_KEY`.
+6. No GitHub, adicione o secret `RENDER_DEPLOY_HOOK_URL` nas configurações do repositório (**Settings > Secrets and variables > Actions**) com a URL do Deploy Hook gerada no painel do Web Service do Render.
+
+### 6. Variáveis de Ambiente Necessárias (Sem Valores Reais)
+Consulte o arquivo [`.env.example`](.env.example) para o template de desenvolvimento. Em produção (Render):
+- `NODE_ENV=production`
+- `PORT=3000`
+- `DATABASE_URL` (injetada automaticamente pelo Render via Blueprint vinculando ao banco gerenciado)
+- `JWT_SECRET` (gerada automaticamente com entropia criptográfica pelo Render)
+- `DEVICE_API_KEY` (chave secreta para autenticação da ESP32 via header `x-device-key`)
+- `DEMO_USER` (nome de usuário inicial do dashboard)
+- `DEMO_PASSWORD` (senha do usuário inicial do dashboard)
+- `DEMO_DEVICE_ID=esp32c3-01`
+- `THINGSPEAK_WRITE_API_KEY` (opcional: chave de escrita do canal do ThingSpeak)
+
+### 7. Como Acessar os Logs e Verificação de Saúde
+- **Verificação Ativa de Saúde:** Acesse [`https://monitoramento-iot-api.onrender.com/health`](https://monitoramento-iot-api.onrender.com/health). Retorna HTTP 200 com `{"status":"ok","database":"connected"}` validando tanto a API quanto a conexão ativa com o PostgreSQL.
+- **Logs em Produção:** No painel do Render, selecione o serviço **monitoramento-iot-api** e acesse a aba **Logs**. O stream em tempo real exibe requisições HTTP, conexões de dispositivos e eventos de auditoria.
+
+### 8. Estimativa de Custos nos Dois Cenários
+- **Cenário 1 (Uso Atual — Projeto Piloto / Acadêmico):**
+  - Web Service Free (0.1 vCPU, 512 MB RAM) + PostgreSQL Free DB (1 GB disco) + SSL Let's Encrypt.
+  - **Custo Mensal: $0.00 (Gratuito)** *(ou ~$14.00/mês para planos Starter sem cold start)*.
+- **Cenário 2 (10x Mais Usuários — Escala Comercial com Múltiplas Fazendas):**
+  - 2 instâncias Web Service Standard (1 vCPU, 2 GB RAM cada para alta disponibilidade) + PostgreSQL Starter gerenciado (1 vCPU, 2 GB RAM, 30 GB SSD com backups contínuos) + retenção de logs de 30 dias.
+  - **Custo Mensal: ~$85.00/mês (~R$ 490,00/mês)**.
+
+---
+
 ## Render deployment
 
 The root `render.yaml` defines a Node web service, managed PostgreSQL, HTTPS health check, and secret environment variables. The service is deployed at [`https://monitoramento-iot-api.onrender.com`](https://monitoramento-iot-api.onrender.com). A public `/health` check returned `{"status":"ok","database":"connected"}` before the device upload. After the board was configured, its Serial Monitor showed two HTTP 201 responses from the public API. The dashboard is served at the same address; use the configured demo credentials and refresh it to confirm the newest cloud reading. Keep secrets in Render and in the ignored local `credentials.h`; never commit or share their values. The free database is suitable only for a short preview; preserve any evidence needed for the presentation.

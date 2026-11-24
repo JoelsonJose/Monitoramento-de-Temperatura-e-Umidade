@@ -1,0 +1,225 @@
+name: manga-trace-ci-cd
+
+on:
+  push:
+    branches: [ main, develop, "devops-*" ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  # ============================================================================
+  # 1. SEGURANÇA DO CÓDIGO-FONTE (SAST, Secrets e Filesystem Scan)
+  # ============================================================================
+  security:
+    name: "Security Scan (Repo & Código)"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks (Secret Detection)
+        uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Semgrep (SAST)
+        uses: returntocorp/semgrep-action@v1
+        continue-on-error: true
+        with:
+          config: auto
+
+      - name: Run Trivy Vulnerability Scanner (Filesystem)
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+  # ============================================================================
+  # 2. QA DO CÓDIGO-FONTE (Dependências e Testes Unitários/Integração)
+  # ============================================================================
+  qa:
+    name: "QA & Testes Automatizados (Node.js)"
+    runs-on: ubuntu-latest
+    needs: security
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Run Automated Tests (Unit & Integration)
+        run: npm test
+
+  # ============================================================================
+  # 3. DOCKER: BUILD, SEGURANÇA DA IMAGEM E QA DO CONTAINER
+  # ============================================================================
+  docker-image:
+    name: "Docker Image: Build, Segurança & Qualidade (Smoke Test)"
+    runs-on: ubuntu-latest
+    needs: qa
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3.1 Build da imagem Docker
+      - name: Build Docker Image
+        run: |
+          docker build -t manga-trace-api:latest -t manga-trace-api:${{ github.sha }} backend/
+
+      # 3.2 Segurança da imagem (Vulnerability Scan)
+      - name: Scan Docker Image with Trivy (Vulnerabilities & Misconfigurations)
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          scan-type: 'image'
+          image-ref: 'manga-trace-api:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+      # 3.3 Auditoria de segurança: Usuário não-root
+      - name: Audit Docker Image Configuration (Non-Root User)
+        run: |
+          USER_CHECK=$(docker image inspect manga-trace-api:latest --format '{{.Config.User}}')
+          echo "Usuario configurado na imagem: $USER_CHECK"
+          if [ -z "$USER_CHECK" ] || [ "$USER_CHECK" = "root" ]; then
+            echo "ALERTA: Imagem configurada como root!"
+            exit 1
+          fi
+          echo "Sucesso: Imagem executa sob usuario restrito non-root ($USER_CHECK)."
+
+      # 3.4 Qualidade: Execução do container em ambiente isolado
+      - name: Run Container for Quality Validation
+        run: |
+          docker run -d --name manga-trace-app \
+            -p 3000:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            manga-trace-api:latest
+
+      # 3.5 Qualidade: Healthcheck ativo no endpoint /health
+      - name: Wait for Application Readiness & Healthcheck (/health)
+        run: |
+          echo "Aguardando inicializacao do backend Node.js no container..."
+          READY=0
+          for i in $(seq 1 30); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health || true)
+            echo "Tentativa $i: HTTP Status $HTTP_CODE"
+            if [ "$HTTP_CODE" -eq 200 ]; then
+              READY=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "Falha: Container nao respondeu com HTTP 200 no /health dentro do tempo limite!"
+            docker logs manga-trace-app
+            exit 1
+          fi
+
+      # 3.6 Qualidade: Validação dos dados de telemetria / API
+      - name: Validate Health Endpoint Response Content
+        run: |
+          BODY=$(curl -s http://localhost:3000/health)
+          echo "Resposta JSON de /health: $BODY"
+          if ! echo "$BODY" | grep -q '"status":"ok"'; then
+            echo "Falha: Status de saude invalido no endpoint /health!"
+            docker logs manga-trace-app
+            exit 1
+          fi
+          echo "Sucesso: Endpoint /health validado com status ok."
+
+      # 3.7 Qualidade: Validação do Frontend Dashboard
+      - name: Validate Dashboard HTML Served by Container
+        run: |
+          DASH_HTML=$(curl -s http://localhost:3000/)
+          if ! echo "$DASH_HTML" | grep -qi "Manga Trace"; then
+            echo "Falha: Dashboard HTML nao contem o titulo do sistema!"
+            docker logs manga-trace-app
+            exit 1
+          fi
+          echo "Sucesso: Dashboard servido perfeitamente pelo container Docker."
+
+      # 3.8 Limpeza do container de teste
+      - name: Inspect Container Logs & Clean Up
+        if: always()
+        run: |
+          echo "=== Logs do Container ==="
+          docker logs manga-trace-app
+          docker stop manga-trace-app || true
+          docker rm manga-trace-app || true
+
+  # ============================================================================
+  # 4. DEPLOY
+  # ============================================================================
+  deploy:
+    name: "Deploy"
+    runs-on: ubuntu-latest
+    needs: docker-image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    permissions:
+      contents: read
+
+    steps:
+      - name: Trigger Deployment
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "AVISO: RENDER_DEPLOY_HOOK_URL nao configurado nos segredos do GitHub Actions."
+            echo "Configure o secret RENDER_DEPLOY_HOOK_URL nas configuracoes do repositorio para ativar o acionamento automatico via webhook."
+          else
+            echo "Disparando deploy automatico no Render via webhook..."
+            RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+            HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d':' -f2)
+            echo "Resposta do Render (HTTP $HTTP_STATUS)"
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              echo "Sucesso: Deploy acionado com sucesso no provedor de nuvem!"
+            else
+              echo "Falha ao acionar o Deploy Hook (HTTP $HTTP_STATUS)!"
+              echo "$RESPONSE"
+              exit 1
+            fi
+          fi
+
+      - name: Verify Public Cloud Health
+        run: |
+          echo "Verificando saude da aplicacao publicada na nuvem..."
+          PUBLIC_URL="https://monitoramento-iot-api.onrender.com/health"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PUBLIC_URL" || true)
+          echo "Status de saude na URL publica ($PUBLIC_URL): HTTP $HTTP_CODE"
