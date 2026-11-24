@@ -5,15 +5,15 @@
 - **Instituição:** Senac
 - **Curso:** Cibersegurança
 - **Professor:** Ronierison Maciel
-- **Código de Missão:** `MISSAO` *(Substituir pelo código de 6 caracteres fornecido pelo professor, ex: `K7Q2M9`)*
+- **Código de Missão:** `MISSAO` *
 - **Integrantes da Equipe:**
-  - Morgana Barbosa da Silva — GitHub: [@Morganabarbs](https://github.com/Morganabarbs)
-  - Homero — GitHub: [@homerocosta](https://github.com/homerocosta)
-  - Joelson — GitHub: [@JoelsonFSilva](https://github.com/JoelsonFSilva)
-  - Lucas Ximenes — GitHub: [@lucasximenesf](https://github.com/lucasximenesf)
-  - Nicollas — GitHub: [@Nicollas231](https://github.com/Nicollas231)
-  - Thayanne — GitHub: [@Thayanne99](https://github.com/Thayanne99)
-  - João César — GitHub: [@joao-c-alves](https://github.com/joao-c-alves)
+  - Morgana Barbosa da Silva —
+  - Homero —
+  - Joelson — 
+  - Lucas Ximenes — 
+  - Nicollas — 
+  - Thayanne — 
+  - João César — 
 
 ---
 
