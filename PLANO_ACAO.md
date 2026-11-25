@@ -1,5 +1,12 @@
 # Plano de ação
 
+## Checklist de ajustes da aplicação (25/11/2026)
+
+| Ordem | Item | Estado | Próxima confirmação |
+|---|---|---|---|
+| 1 | PWA: manifesto, ícones, service worker e cache da interface | Parcialmente concluído: build de produção e arquivos PWA foram verificados localmente; chamadas da API exigem internet | Confirmar instalação e abertura offline em um celular |
+| 2 | Cadastro e autenticador independente por usuário | Implementado localmente e coberto por testes: cadastro username/senha, QR TOTP exclusivo por usuário e códigos de recuperação | Publicar API/frontend; validar cadastro e login de uma segunda conta no ambiente publicado |
+
 ## Matriz de responsabilidades
 
 A orientação pede responsáveis e links para commits, mas não determina a distribuição individual. Joelson definiu a divisão abaixo para esta equipe. Os links apontam para o commit que registra as atribuições; tarefas realizadas devem receber seus próprios commits de evidência.

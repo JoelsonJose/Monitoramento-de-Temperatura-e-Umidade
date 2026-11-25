@@ -5,6 +5,11 @@ const messages = {
   'Could not load readings': 'Não foi possível carregar as leituras.',
   'User not found': 'Usuário não encontrado.',
   'Invalid or expired setup token': 'A configuração do segundo fator expirou. Entre novamente.',
+  'Too many registration attempts; try again later': 'Muitas tentativas de cadastro. Aguarde 15 minutos e tente novamente.',
+  'Username must be 3 to 32 characters: letters, numbers, dot, underscore or hyphen': 'O usuário deve ter de 3 a 32 caracteres: letras, números, ponto, hífen ou sublinhado.',
+  'Password must contain between 12 and 256 characters': 'A senha deve ter entre 12 e 256 caracteres.',
+  'Username is already registered': 'Esse usuário já está cadastrado. Escolha outro ou entre na sua conta.',
+  'Account security is not configured': 'A segurança de cadastro ainda não foi configurada no servidor.',
 };
 
 export function friendlyError(message) {

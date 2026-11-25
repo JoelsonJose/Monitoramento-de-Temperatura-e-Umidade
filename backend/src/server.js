@@ -22,6 +22,7 @@ import {
 
 import { generateQrCode } from './auth/qr-code.js';
 import { consumeTotpStep } from './auth/totp-replay.js';
+import { hashPassword, verifyPassword } from './auth/password.js';
 import { validarMensagens, perguntarAoAgente, createRateLimiter } from './chat/agronomia-chat.js';
 
 // Auto-carregamento de variáveis de ambiente do .env ou defaults inteligentes
@@ -61,6 +62,7 @@ const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const THINGSPEAK_MIN_INTERVAL_MS = 16_000;
 let lastThingSpeakAttemptAt = 0;
 const chatRateLimit = createRateLimiter({ limite: 10, janelaMs: 60_000 });
+const registrationRateLimit = createRateLimiter({ limite: 5, janelaMs: 15 * 60_000 });
 
 function createInMemoryDb() {
   console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
@@ -69,6 +71,7 @@ function createInMemoryDb() {
     demo: {
       username: 'demo',
       role: 'admin',
+      password_hash: null,
       otp_enabled: false,
       otp_secret_encrypted: null,
       otp_last_step: null,
@@ -78,6 +81,7 @@ function createInMemoryDb() {
     [demoUsername]: {
       username: demoUsername,
       role: 'admin',
+      password_hash: null,
       otp_enabled: false,
       otp_secret_encrypted: null,
       otp_last_step: null,
@@ -230,6 +234,21 @@ function createInMemoryDb() {
         const rows = readingsState.slice(-limit).reverse();
         return { rowCount: rows.length, rows };
       }
+      if (sql.includes('WITH new_user AS')) {
+        const [username, passwordHash] = params;
+        if (usersState[username]) return { rowCount: 0, rows: [] };
+        usersState[username] = {
+          username,
+          role: 'viewer',
+          password_hash: passwordHash,
+          otp_enabled: false,
+          otp_secret_encrypted: null,
+          otp_last_step: null,
+          recovery_codes_hash: [],
+          otp_enrolled_at: null
+        };
+        return { rowCount: 1, rows: [{ username }] };
+      }
       if (sql.includes('FROM lotes l')) {
         if (sql.includes("status_selo = 'aprovado'")) {
           const comSelo = lotesState.filter(l => l.status_selo === 'aprovado');
@@ -314,7 +333,7 @@ function createInMemoryDb() {
         const username = params[0];
         let u = usersState[username];
         if (!u && username === demoUsername) {
-          u = { username, role: 'admin', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          u = { username, role: 'admin', password_hash: null, otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
           usersState[username] = u;
         }
         if (!u) return { rowCount: 0, rows: [] };
@@ -326,10 +345,12 @@ function createInMemoryDb() {
         const username = params[0];
         let u = usersState[username];
         if (!u) {
-          u = { username, role: 'viewer', otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
+          u = { username, role: 'viewer', password_hash: null, otp_enabled: false, otp_secret_encrypted: null, otp_last_step: null, recovery_codes_hash: [] };
           usersState[username] = u;
         }
-        if (sql.includes('otp_secret_encrypted = $2')) {
+        if (sql.includes('password_hash = $2')) {
+          u.password_hash = params[1];
+        } else if (sql.includes('otp_secret_encrypted = $2')) {
           u.otp_secret_encrypted = params[1];
           u.otp_enabled = false;
           u.otp_last_step = null;
@@ -354,14 +375,15 @@ function createInMemoryDb() {
       if (sql.includes('FROM device_access')) {
         const username = params[0];
         const devId = params[1];
-        if ((username === 'demo' || username === demoUsername) && (!devId || devId === 'esp32c3-01')) {
-          return { rowCount: 1, rows: [{ username, device_id: 'esp32c3-01', is_owner: true, can_read: true }] };
+        const user = usersState[username];
+        if (user && (!devId || devId === 'esp32c3-01')) {
+          return { rowCount: 1, rows: [{ username, device_id: 'esp32c3-01', is_owner: user.role === 'admin', can_read: true }] };
         }
         return { rowCount: 0, rows: [] };
       }
       if (sql.includes('INNER JOIN device_access a ON a.device_id = l.device_id')) {
         const [loteId, username] = params;
-        if ((username === 'demo' || username === demoUsername) && lotesState.some(l => l.id_lote === Number(loteId))) {
+        if (usersState[username] && lotesState.some(l => l.id_lote === Number(loteId))) {
           return { rowCount: 1, rows: [{ id_lote: Number(loteId) }] };
         }
         return { rowCount: 0, rows: [] };
@@ -668,34 +690,99 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
     }
 
   
-    if (req.method === 'POST' && url.pathname === '/api/v1/auth/token') {
-      const body = await bodyJson(req);
-
-      const isDefaultDemo = body.username === 'demo' && body.password === 'demo';
-      const isEnvConfigured = body.username === env.DEMO_USER && body.password === env.DEMO_PASSWORD;
-
-      if (!isDefaultDemo && !isEnvConfigured) {
-        logSecurityBlock('2FA_OTP', 'Credenciais inválidas no login primário', { username: body.username }, env);
-        return reply(res, 401, { error: 'Invalid credentials' });
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/register') {
+      const address = req.socket.remoteAddress || 'unknown';
+      if (!registrationRateLimit(address)) {
+        return reply(res, 429, { error: 'Too many registration attempts; try again later' });
       }
 
+      const body = await bodyJson(req);
+      const username = String(body.username || '').trim().toLowerCase();
+      const password = body.password;
+      if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+        return reply(res, 400, { error: 'Username must be 3 to 32 characters: letters, numbers, dot, underscore or hyphen' });
+      }
+      if (typeof password !== 'string' || password.length < 12 || password.length > 256) {
+        return reply(res, 400, { error: 'Password must contain between 12 and 256 characters' });
+      }
+      if (!env.JWT_SECRET || !env.OTP_ENCRYPTION_KEY) {
+        return reply(res, 503, { error: 'Account security is not configured' });
+      }
+
+      const passwordHash = await hashPassword(password);
+      const deviceId = env.DEMO_DEVICE_ID || 'esp32c3-01';
+      const created = await db.query(
+        `WITH new_user AS (
+           INSERT INTO users(username, password_hash, role)
+           VALUES($1, $2, 'viewer')
+           ON CONFLICT(username) DO NOTHING
+           RETURNING username
+         )
+         INSERT INTO device_access(username, device_id, can_read, is_owner)
+         SELECT username, $3, TRUE, FALSE FROM new_user
+         ON CONFLICT(username, device_id) DO NOTHING
+         RETURNING username`,
+        [username, passwordHash, deviceId]
+      );
+      if (!created.rowCount) return reply(res, 409, { error: 'Username is already registered' });
+
+      const setupToken = signToken(
+        username,
+        env.JWT_SECRET,
+        undefined,
+        { purpose: 'otp_setup', expiresInSeconds: 600 }
+      );
+      return reply(res, 201, {
+        setup_required: true,
+        setup_token: setupToken,
+        message: 'Account created. Set up your authenticator to finish registration.'
+      });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/v1/auth/token') {
+      const body = await bodyJson(req);
+      const username = String(body.username || '').trim().toLowerCase();
+      const password = body.password;
+      if (!username || typeof password !== 'string') return reply(res, 401, { error: 'Invalid credentials' });
+
       const result = await db.query(
-        `SELECT username, otp_enabled
+        `SELECT username, password_hash, otp_enabled
          FROM users
          WHERE username = $1`,
-        [body.username]
+        [username]
       );
 
       if (!result.rowCount) {
-        logSecurityBlock('2FA_OTP', 'Usuário não localizado no banco', { username: body.username }, env);
+        logSecurityBlock('2FA_OTP', 'Usuário não localizado no banco', { username }, env);
         return reply(res, 401, { error: 'User not found' });
       }
 
       const user = result.rows[0];
+      const validCredentials = user.password_hash
+        ? await verifyPassword(password, user.password_hash)
+        : (
+          (username === String(env.DEMO_USER || '').toLowerCase() &&
+            typeof env.DEMO_PASSWORD === 'string' && password === env.DEMO_PASSWORD) ||
+          (env.NODE_ENV !== 'production' && username === 'demo' && password === 'demo')
+        );
+
+      if (!validCredentials) {
+        logSecurityBlock('2FA_OTP', 'Credenciais inválidas no login primário', { username }, env);
+        return reply(res, 401, { error: 'Invalid credentials' });
+      }
+
+      // Migra a conta legada configurada por ambiente para uma senha armazenada em hash.
+      if (!user.password_hash) {
+        const upgradedHash = await hashPassword(password);
+        await db.query(
+          'UPDATE users SET password_hash = $2 WHERE username = $1 AND password_hash IS NULL',
+          [username, upgradedHash]
+        );
+      }
 
       if (!user.otp_enabled) {
         const setupToken = signToken(
-          user.username,
+          username,
           env.JWT_SECRET,
           undefined,
           { purpose: 'otp_setup', expiresInSeconds: 600 }
@@ -709,7 +796,7 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       }
 
       const challengeToken = signToken(
-        user.username,
+        username,
         env.JWT_SECRET,
         undefined,
         { purpose: 'otp_challenge', expiresInSeconds: 300 }

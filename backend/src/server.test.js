@@ -171,8 +171,11 @@ function mockDb() {
       if (sql.includes('UPDATE lotes')) {
         return { rowCount: 1, rows: [lotesState[0]] };
       }
-      if (sql.includes('SELECT username, otp_enabled')) {
-        return { rowCount: 1, rows: [{ username: params[0], otp_enabled: true }] };
+      if (sql.includes('SELECT username, password_hash, otp_enabled')) {
+        return { rowCount: 1, rows: [{ username: params[0], password_hash: null, otp_enabled: true }] };
+      }
+      if (sql.includes('UPDATE users SET password_hash = $2')) {
+        return { rowCount: 1, rows: [] };
       }
 
       throw new Error(`Unexpected query in route test: ${sql}`);

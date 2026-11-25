@@ -5,26 +5,41 @@ import { api } from '../lib/api.js';
 
 export default function LoginView({ onAuthenticated }) {
   const [step, setStep] = useState('credentials');
-  const [status, setStatus] = useState('Acesso restrito à equipe do projeto.');
+  const [mode, setMode] = useState('login');
+  const [status, setStatus] = useState('Entre com sua conta ou crie um usuário para começar.');
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [useRecovery, setUseRecovery] = useState(false);
   const [challengeToken, setChallengeToken] = useState('');
   const [setupToken, setSetupToken] = useState('');
+  const [setupUsername, setSetupUsername] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState([]);
 
-  function reset(message = 'Acesso restrito à equipe do projeto.', isError = false) {
+  function reset(message = 'Entre com sua conta ou crie um usuário para começar.', isError = false) {
     setStep('credentials');
+    setMode('login');
     setStatus(message);
     setError(isError);
     setUseRecovery(false);
     setChallengeToken('');
     setSetupToken('');
+    setSetupUsername('');
     setQrCode('');
     setSecret('');
     setRecoveryCodes([]);
+  }
+
+  async function beginOtpSetup(token, username = '') {
+    setSetupToken(token);
+    setSetupUsername(username);
+    setStep('setup');
+    setStatus('Carregando configuração do autenticador…');
+    const setup = await api('/api/v1/auth/otp/setup', { method: 'POST', token });
+    setQrCode(setup.qr_code);
+    setSecret(setup.secret);
+    setStatus('Escaneie o QR Code no seu aplicativo autenticador.');
   }
 
   async function submitCredentials(event) {
@@ -43,16 +58,7 @@ export default function LoginView({ onAuthenticated }) {
         return;
       }
       if (body.setup_required) {
-        setSetupToken(body.setup_token);
-        setStep('setup');
-        setStatus('Carregando chave de segurança…');
-        const setup = await api('/api/v1/auth/otp/setup', {
-          method: 'POST',
-          token: body.setup_token,
-        });
-        setQrCode(setup.qr_code);
-        setSecret(setup.secret);
-        setStatus('Escaneie o QR Code no seu aplicativo autenticador.');
+        await beginOtpSetup(body.setup_token, String(form.get('username') || '').trim());
         return;
       }
       if (body.otp_required) {
@@ -60,6 +66,35 @@ export default function LoginView({ onAuthenticated }) {
         setStep('challenge');
         setStatus('Informe o código de 6 dígitos gerado no aplicativo.');
       }
+    } catch (err) {
+      setStatus(err.message);
+      setError(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitRegistration(event) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const password = String(form.get('password') || '');
+    const confirmation = String(form.get('password_confirmation') || '');
+    if (password !== confirmation) {
+      setStatus('As senhas não coincidem.');
+      setError(true);
+      return;
+    }
+
+    setBusy(true);
+    setStatus('Criando sua conta…');
+    setError(false);
+    try {
+      const body = await api('/api/v1/auth/register', {
+        method: 'POST',
+        body: { username: form.get('username'), password },
+      });
+      if (!body.setup_required || !body.setup_token) throw new Error('Não foi possível iniciar a configuração do autenticador.');
+      await beginOtpSetup(body.setup_token, String(form.get('username') || '').trim());
     } catch (err) {
       setStatus(err.message);
       setError(true);
@@ -139,16 +174,38 @@ export default function LoginView({ onAuthenticated }) {
           <h2 id="login-title">Que bom ter você aqui.</h2>
           {step === 'credentials' ? (
             <>
-              <p className="login-hint">Entre com sua conta para ver a telemetria e a auditoria dos lotes.</p>
-              <form onSubmit={submitCredentials}>
-                <Field id="username" label="Usuário">
-                  <input id="username" name="username" autoComplete="username" defaultValue="demo" required />
-                </Field>
-                <Field id="password" label="Senha">
-                  <input id="password" name="password" type="password" autoComplete="current-password" defaultValue="demo" required />
-                </Field>
-                <button className="primary" type="submit" disabled={busy}>{busy ? 'Conectando…' : 'Entrar no painel'}</button>
-              </form>
+              {mode === 'login' ? (
+                <>
+                  <p className="login-hint">Entre com sua conta para ver a telemetria e a auditoria dos lotes.</p>
+                  <form onSubmit={submitCredentials}>
+                    <Field id="username" label="Usuário">
+                      <input id="username" name="username" autoComplete="username" minLength={3} maxLength={32} required />
+                    </Field>
+                    <Field id="password" label="Senha">
+                      <input id="password" name="password" type="password" autoComplete="current-password" required />
+                    </Field>
+                    <button className="primary" type="submit" disabled={busy}>{busy ? 'Conectando…' : 'Entrar no painel'}</button>
+                  </form>
+                  <div className="form-links"><span>Primeiro acesso?</span><button className="linkish" type="button" onClick={() => { setMode('register'); setError(false); setStatus('Crie sua conta e configure seu próprio autenticador.'); }}>Criar conta</button></div>
+                </>
+              ) : (
+                <>
+                  <p className="login-hint">Crie seu usuário e senha. Em seguida, configure o autenticador no seu próprio celular. Não é necessário e-mail ou número de telefone.</p>
+                  <form onSubmit={submitRegistration}>
+                    <Field id="register-username" label="Usuário">
+                      <input id="register-username" name="username" autoComplete="username" minLength={3} maxLength={32} pattern="[A-Za-z0-9._-]+" title="Use de 3 a 32 letras, números, ponto, hífen ou sublinhado." required />
+                    </Field>
+                    <Field id="register-password" label="Senha (mínimo 12 caracteres)">
+                      <input id="register-password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={256} required />
+                    </Field>
+                    <Field id="register-password-confirmation" label="Confirme a senha">
+                      <input id="register-password-confirmation" name="password_confirmation" type="password" autoComplete="new-password" minLength={12} maxLength={256} required />
+                    </Field>
+                    <button className="primary" type="submit" disabled={busy}>{busy ? 'Criando conta…' : 'Criar conta e configurar 2FA'}</button>
+                  </form>
+                  <div className="form-links"><span>Já tem uma conta?</span><button className="linkish" type="button" onClick={() => { setMode('login'); setError(false); setStatus('Entre com seu usuário e senha.'); }}>Voltar ao login</button></div>
+                </>
+              )}
             </>
           ) : null}
 
@@ -176,7 +233,10 @@ export default function LoginView({ onAuthenticated }) {
 
           {step === 'setup' ? (
             <form onSubmit={submitSetup}>
-              <p className="callout setup">Escaneie o QR Code no Google Authenticator ou no Authy e confirme o código gerado.</p>
+              <p className="callout setup">
+                {setupUsername ? <>Este autenticador será vinculado somente à conta <strong>{setupUsername}</strong>. </> : null}
+                No Microsoft Authenticator, toque em +, escolha “Outra conta” e escaneie o QR Code. O app gera um código de 6 dígitos no celular; não enviamos código por push, e-mail ou SMS.
+              </p>
               <div className="qr-wrap">
                 {qrCode ? <img src={qrCode} alt="QR Code para configurar a autenticação em dois fatores" /> : <p>Gerando QR Code…</p>}
               </div>

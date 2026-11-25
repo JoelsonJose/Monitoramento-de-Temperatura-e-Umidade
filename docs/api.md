@@ -5,6 +5,7 @@ The API is versioned under `/api/v1`. Local development listens on port 3000. Th
 | Method | Path | Authentication | Purpose |
 |---|---|---|---|
 | GET | `/health` | None | API and database health |
+| POST | `/api/v1/auth/register` | None | Create a read-only user and start that user's authenticator enrollment |
 | POST | `/api/v1/auth/token` | Username and password | Issue a one-hour HS256 bearer token |
 | POST | `/api/v1/ingest` | `X-Device-Key` | Validate and store a device reading (Temp, Humidity, Luminosity) |
 | GET | `/api/v1/readings/latest` | Bearer JWT | Return the latest reading |
@@ -15,6 +16,14 @@ The API is versioned under `/api/v1`. Local development listens on port 3000. Th
 | POST | `/api/v1/lotes` | Bearer JWT | Create a new batch (`codigo_lote`, `nome`, `variedade`, `etapa_atual`, `data_inicio`, `device_id`) |
 | PATCH | `/api/v1/lotes/{id}` | Bearer JWT | Update batch stage (`pomar` <-> `estoque`) or harvest/closure date |
 | GET | `/api/v1/lotes/{id}/qualidade` | Bearer JWT | Calculate adherence in **both stages** and return the official **Selo de Qualidade da Manga** audit |
+
+### Account registration and two-factor setup
+
+`POST /api/v1/auth/register` accepts `{"username":"ana","password":"at-least-12-characters"}`. Usernames are normalized to lowercase and must contain 3-32 letters, numbers, dots, underscores or hyphens. Passwords require 12-256 characters and are stored as salted scrypt hashes. A new account receives the `viewer` role and read-only access to the configured demo device; it does not receive owner privileges.
+
+A successful registration returns HTTP 201 with a short-lived `setup_token`. Send it as a Bearer token to `POST /api/v1/auth/otp/setup` to receive a unique QR code and manual TOTP secret. Scan it in Microsoft Authenticator using **+ > Other account**, or another RFC 6238 compatible authenticator, then submit its six-digit code to `POST /api/v1/auth/otp/enable`. Eight one-time recovery codes are returned once. The authenticator generates codes locally; this flow does not send push notifications, email or SMS. Each account has its own TOTP secret. Registration is limited to five attempts per client address per 15 minutes.
+
+`POST /api/v1/auth/token` verifies the stored password hash and then requires the account's TOTP code or a recovery code. The first successful login for the legacy environment-configured account upgrades its password to a scrypt hash. Registration errors: `400` invalid username/password, `409` username already taken, `429` rate limited, `503` security configuration missing.
 
 Ingestion JSON:
 
