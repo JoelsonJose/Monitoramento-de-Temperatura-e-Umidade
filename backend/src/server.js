@@ -22,6 +22,7 @@ import {
 
 import { generateQrCode } from './auth/qr-code.js';
 import { consumeTotpStep } from './auth/totp-replay.js';
+import { validarMensagens, perguntarAoAgente, createRateLimiter } from './chat/agronomia-chat.js';
 
 // Auto-carregamento de variáveis de ambiente do .env ou defaults inteligentes
 const rootDir = fileURLToPath(new URL('../../', import.meta.url));
@@ -59,6 +60,7 @@ const port = Number(process.env.PORT || 3000);
 const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
 const THINGSPEAK_MIN_INTERVAL_MS = 16_000;
 let lastThingSpeakAttemptAt = 0;
+const chatRateLimit = createRateLimiter({ limite: 10, janelaMs: 60_000 });
 
 function createInMemoryDb() {
   console.log('[Manga Trace] Modo Plug & Play Local (Banco em Memória ativo com 5 lotes pré-carregados).');
@@ -1219,6 +1221,22 @@ if (!possuiPropriedade) {
       `, values);
       if (!result.rowCount) return reply(res, 404, { error: 'Lote não encontrado' });
       return reply(res, 200, { lote: result.rows[0] });
+    }
+
+    // --- ASSISTENTE DE IA (AGRONOMIA DA MANGA) ---
+    if (req.method === 'POST' && url.pathname === '/api/v1/chat') {
+      const identity = verifyToken(bearer(req), env.JWT_SECRET);
+      if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
+      if (!env.AI_API_KEY) {
+        return reply(res, 503, { error: 'Assistente de IA indisponível: a chave AI_API_KEY não está configurada no servidor.' });
+      }
+      if (!chatRateLimit(identity.sub)) {
+        return reply(res, 429, { error: 'Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo.' });
+      }
+      const validacao = validarMensagens(await bodyJson(req));
+      if (!validacao.ok) return reply(res, 400, { error: validacao.erro });
+      const resposta = await perguntarAoAgente(validacao.mensagens, env);
+      return reply(res, 200, { resposta });
     }
 
     if (await serveFrontend(req, res, url)) return;

@@ -89,3 +89,15 @@ Retorno de exemplo de Lote com Selo Concedido:
   }
 }
 ```
+
+## Assistente de IA — agronomia da manga (`POST /api/v1/chat`)
+
+Chatbot do dashboard (botão redondo no canto inferior direito, visível após o login). O navegador nunca fala com o provedor de IA: ele chama esta rota, e o **servidor** usa a chave `AI_API_KEY` (lida do `.env` ou das variáveis de ambiente do Render).
+
+- **Autenticação:** `Authorization: Bearer <token de acesso>` (mesmo token das demais rotas).
+- **Corpo:** `{"messages":[{"role":"user","content":"Quando colher a Tommy Atkins?"}]}`. Máximo de 12 mensagens e 1500 caracteres por mensagem; a conversa deve começar e terminar com `user`.
+- **Resposta 200:** `{"resposta":"..."}`.
+- **Erros:** `400` corpo inválido · `401` sem token/expirado · `429` mais de 10 perguntas por minuto por usuário · `503` `AI_API_KEY` não configurada · `502`/`504` provedor de IA indisponível ou lento. As mensagens de erro nunca incluem a chave nem o corpo de resposta do provedor.
+- **Escopo do assistente:** responde só sobre agronomia da manga (prompt de sistema em `backend/src/chat/agronomia-chat.js`) e recomenda consultar um engenheiro agrônomo para doses e defensivos.
+- **Configuração:** `AI_API_KEY` (obrigatória, sem aspas) e `AI_MODEL` (opcional, padrão `gemini-3.5-flash-lite`) em `.env`. Veja `.env.example`.
+- **Chave gratuita:** crie em https://aistudio.google.com/apikey (Google AI Studio, camada gratuita). Os limites de uso gratuito são do Google; ao estourar, a rota responde `429` com mensagem amigável. Na camada gratuita o Google pode usar o conteúdo das conversas para melhorar seus produtos, então não envie dados pessoais.

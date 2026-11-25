@@ -26,6 +26,10 @@ services:
         value: esp32c3-01
       - key: THINGSPEAK_WRITE_API_KEY
         sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: gemini-3.5-flash-lite
 
 databases:
   - name: monitoramento-iot-db
