@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -587,6 +587,76 @@ export function avaliarQualidadeLote(lote, allReadings) {
   };
 }
 
+const STATIC_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+};
+
+function staticType(filePath) {
+  return STATIC_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+}
+
+async function serveFrontend(req, res, url) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return false;
+  if (url.pathname.startsWith('/api/') || url.pathname === '/health') return false;
+
+  let requested = 'index.html';
+  try {
+    const decoded = decodeURIComponent(url.pathname);
+    if (decoded !== '/') requested = decoded.replace(/^\/+/, '');
+  } catch {
+    reply(res, 400, { error: 'Invalid path' });
+    return true;
+  }
+
+  const root = path.resolve(publicDir);
+  const filePath = path.resolve(root, requested);
+  const relative = path.relative(root, filePath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    reply(res, 403, { error: 'Forbidden' });
+    return true;
+  }
+
+  let target = filePath;
+  try {
+    const info = await stat(target);
+    if (!info.isFile()) throw new Error('not a file');
+  } catch {
+    if (path.extname(requested)) return false;
+    target = path.join(root, 'index.html');
+    try {
+      await stat(target);
+    } catch {
+      return false;
+    }
+  }
+
+  const noStore = target.endsWith(`${path.sep}index.html`)
+    || target.endsWith(`${path.sep}sw.js`)
+    || target.endsWith('.webmanifest');
+  res.writeHead(200, {
+    'content-type': staticType(target),
+    'cache-control': noStore ? 'no-cache' : 'public, max-age=86400',
+    'x-content-type-options': 'nosniff',
+  });
+  if (req.method === 'HEAD') {
+    res.end();
+    return true;
+  }
+  res.end(await readFile(target));
+  return true;
+}
+
 async function handler(req, res, db = (activeDb || pool), env = process.env) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
@@ -1151,11 +1221,7 @@ if (!possuiPropriedade) {
       return reply(res, 200, { lote: result.rows[0] });
     }
 
-    if (req.method === 'GET' && url.pathname === '/') {
-      const html = await readFile(path.join(publicDir, 'index.html'));
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      return res.end(html);
-    }
+    if (await serveFrontend(req, res, url)) return;
     return reply(res, 404, { error: 'Not found' });
   } catch (error) {
     console.error(JSON.stringify({ event: 'request_error', message: error.message }));
