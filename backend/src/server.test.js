@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createApiServer, avaliarQualidadeLote } from './server.js';
 import { signToken } from './security.js';
 
@@ -393,4 +396,22 @@ test('IDOR: impede usuário sem autorização de registrar colheita', async t =>
   });
 
   assert.equal(response.status, 404);
+});
+
+test('entrega arquivo da PWA e não vaza arquivo fora da pasta pública', async t => {
+  const publicDir = fileURLToPath(new URL('../public/', import.meta.url));
+  const probe = path.join(publicDir, 'pwa-probe.txt');
+  await mkdir(publicDir, { recursive: true });
+  await writeFile(probe, 'manga-trace-probe');
+  t.after(() => rm(probe, { force: true }));
+
+  const { base } = await startTestServer(t);
+  const served = await fetch(`${base}/pwa-probe.txt`);
+  assert.equal(served.status, 200);
+  assert.match(served.headers.get('content-type'), /text\/plain/);
+  assert.equal(await served.text(), 'manga-trace-probe');
+
+  const blocked = await fetch(`${base}/%2e%2e/package.json`);
+  const body = await blocked.text();
+  assert.equal(body.includes('iot-monitoring-api'), false);
 });

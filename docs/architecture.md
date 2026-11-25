@@ -20,9 +20,9 @@ O dashboard exige autenticação e consulta a leitura mais recente e o horário 
 | Página local da ESP32-C3 | HTTP / TCP 80 | Implementada; leitura do DHT11 e recuperação F1/F3 observadas na placa |
 | API Node.js | HTTPS / TCP 443 público; porta 3000 local | Implantada no Render; duas respostas HTTP 201 registradas pela placa |
 | PostgreSQL | TCP 5432, rede privada do serviço | Serviço gerenciado; `/health` informou conexão ativa |
-| Acesso ao dashboard | HTTPS / TCP 443 | Interface web com login; idioma português; atualizar e confirmar dados na apresentação |
+| Acesso ao dashboard | HTTPS / TCP 443 | PWA em React, com Radix UI, login e instalação no navegador |
 | ThingSpeak | HTTPS / TCP 443 | Duas gravações anteriores HTTP 200; tentativas recentes HTTP 400 requerem revisão |
-| Aplicativo móvel | HTTPS | Não implementado nesta prévia |
+| Aplicativo instalável | HTTPS | PWA servida pela API; funciona no celular a partir do navegador |
 
 A ligação elétrica está em [`diagrama_eletrico.svg`](diagrama_eletrico.svg), a lista de componentes em [`lista_componentes.md`](lista_componentes.md), as relações de dados em [`diagrama_er.md`](diagrama_er.md) e os casos de teste em [`plano_testes.md`](plano_testes.md). A equipe confirmou funcionalmente F1 (recuperação do Wi-Fi) e F3 (falha e recuperação do sensor); os tempos não foram medidos.
 
