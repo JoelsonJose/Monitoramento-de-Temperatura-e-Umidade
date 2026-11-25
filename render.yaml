@@ -1,11 +1,10 @@
 services:
   - type: web
     name: monitoramento-iot-api
-    runtime: node
-    rootDir: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
     region: virginia
-    buildCommand: npm ci
-    startCommand: npm start
     healthCheckPath: /health
     plan: free
     envVars:

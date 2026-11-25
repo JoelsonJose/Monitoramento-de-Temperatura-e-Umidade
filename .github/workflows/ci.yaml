@@ -99,7 +99,7 @@ jobs:
       # 3.1 Build da imagem Docker
       - name: Build Docker Image
         run: |
-          docker build -t manga-trace-api:latest -t manga-trace-api:${{ github.sha }} backend/
+          docker build -f backend/Dockerfile -t manga-trace-api:latest -t manga-trace-api:${{ github.sha }} .
 
       # 3.2 Segurança da imagem (Vulnerability Scan)
       - name: Scan Docker Image with Trivy (Vulnerabilities & Misconfigurations)
