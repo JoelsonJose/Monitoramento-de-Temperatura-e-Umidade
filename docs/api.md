@@ -10,6 +10,7 @@ The API is versioned under `/api/v1`. Local development listens on port 3000. Th
 | POST | `/api/v1/ingest` | `X-Device-Key` | Validate and store a device reading (Temp, Humidity, Luminosity) |
 | GET | `/api/v1/readings/latest` | Bearer JWT | Return the latest reading |
 | GET | `/api/v1/readings?limit=50&before=...` | Bearer JWT | Return paginated history |
+| GET | `/api/v1/devices` | Bearer JWT | List only devices explicitly associated with the current user |
 | GET | `/api/v1/devices/{device_id}` | Bearer JWT with device access | Return device metadata and last contact |
 | GET | `/api/v1/devices/{device_id}/readings` | Bearer JWT with device access | Return up to 100 readings for that device |
 | GET | `/api/v1/lotes?apenas_com_selo=true` | Bearer JWT | List batches, with optional filter for certified batches only |
@@ -19,7 +20,7 @@ The API is versioned under `/api/v1`. Local development listens on port 3000. Th
 
 ### Account registration and two-factor setup
 
-`POST /api/v1/auth/register` accepts `{"username":"ana","password":"at-least-12-characters"}`. Usernames are normalized to lowercase and must contain 3-32 letters, numbers, dots, underscores or hyphens. Passwords require 12-256 characters and are stored as salted scrypt hashes. A new account receives the `viewer` role and read-only access to the configured demo device; it does not receive owner privileges.
+`POST /api/v1/auth/register` accepts `{"username":"ana","password":"at-least-12-characters"}`. Usernames are normalized to lowercase and must contain 3-32 letters, numbers, dots, underscores or hyphens. Passwords require 12-256 characters and are stored as salted scrypt hashes. A new account receives the `viewer` role but **no device access**. It cannot see readings or device metadata until an administrator explicitly associates a device with that account; assignment currently requires an authorized database operation because there is no device-sharing screen/API yet. The initial migration removes old automatic grants to the configured demo device, retaining access for the configured demo owner.
 
 A successful registration returns HTTP 201 with a short-lived `setup_token`. Send it as a Bearer token to `POST /api/v1/auth/otp/setup` to receive a unique QR code and manual TOTP secret. Scan it in Microsoft Authenticator using **+ > Other account**, or another RFC 6238 compatible authenticator, then submit its six-digit code to `POST /api/v1/auth/otp/enable`. Eight one-time recovery codes are returned once. The authenticator generates codes locally; this flow does not send push notifications, email or SMS. Each account has its own TOTP secret. Registration is limited to five attempts per client address per 15 minutes.
 

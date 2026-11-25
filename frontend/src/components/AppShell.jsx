@@ -60,6 +60,7 @@ export default function AppShell({ token, onLogout }) {
         <DashboardView
           reading={dashboard.latest}
           readings={dashboard.readings}
+          deviceAssigned={dashboard.deviceAssigned}
           connection={dashboard.connection}
           notice={dashboard.notice}
           metric={dashboard.metric}

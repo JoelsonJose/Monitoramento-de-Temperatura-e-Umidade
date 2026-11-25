@@ -209,9 +209,15 @@ function createInMemoryDb() {
     async query(sql, params = []) {
       if (sql.includes('SELECT 1')) return { rowCount: 1, rows: [{ '?column?': 1 }] };
       if (sql.includes('SELECT d.device_id')) {
-        return { rowCount: 1, rows: [{ device_id: 'esp32c3-01', name: 'ESP32-C3 Manga Trace', last_seen_at: new Date().toISOString() }] };
+        const [username, deviceId] = params;
+        const user = usersState[username];
+        if (user?.role === 'admin' && (!deviceId || deviceId === 'esp32c3-01')) {
+          return { rowCount: 1, rows: [{ device_id: 'esp32c3-01', name: 'ESP32-C3 Manga Trace', last_seen_at: new Date().toISOString() }] };
+        }
+        return { rowCount: 0, rows: [] };
       }
       if (sql.includes('SELECT r.device_id') && sql.includes('ORDER BY r.timestamp DESC LIMIT 1')) {
+        if (usersState[params[0]]?.role !== 'admin') return { rowCount: 0, rows: [] };
         const latest = readingsState[readingsState.length - 1];
         return { rowCount: 1, rows: [{ ...latest, last_seen_at: latest.timestamp }] };
       }
@@ -230,11 +236,13 @@ function createInMemoryDb() {
       }
       if (sql.includes('INSERT INTO devices')) return { rowCount: 1, rows: [] };
       if (sql.includes('FROM readings r JOIN device_access')) {
-        const limit = Number(params[params.length - 1] || 50);
+        const username = params[params.length - 1];
+        if (usersState[username]?.role !== 'admin') return { rowCount: 0, rows: [] };
+        const limit = Number((params.length === 3 ? params[1] : params[0]) || 50);
         const rows = readingsState.slice(-limit).reverse();
         return { rowCount: rows.length, rows };
       }
-      if (sql.includes('WITH new_user AS')) {
+      if (sql.includes('INSERT INTO users(username, password_hash, role)')) {
         const [username, passwordHash] = params;
         if (usersState[username]) return { rowCount: 0, rows: [] };
         usersState[username] = {
@@ -250,6 +258,7 @@ function createInMemoryDb() {
         return { rowCount: 1, rows: [{ username }] };
       }
       if (sql.includes('FROM lotes l')) {
+        if (usersState[params[0]]?.role !== 'admin') return { rowCount: 0, rows: [] };
         if (sql.includes("status_selo = 'aprovado'")) {
           const comSelo = lotesState.filter(l => l.status_selo === 'aprovado');
           return { rowCount: comSelo.length, rows: comSelo };
@@ -710,19 +719,12 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
       }
 
       const passwordHash = await hashPassword(password);
-      const deviceId = env.DEMO_DEVICE_ID || 'esp32c3-01';
       const created = await db.query(
-        `WITH new_user AS (
-           INSERT INTO users(username, password_hash, role)
-           VALUES($1, $2, 'viewer')
-           ON CONFLICT(username) DO NOTHING
-           RETURNING username
-         )
-         INSERT INTO device_access(username, device_id, can_read, is_owner)
-         SELECT username, $3, TRUE, FALSE FROM new_user
-         ON CONFLICT(username, device_id) DO NOTHING
+        `INSERT INTO users(username, password_hash, role)
+         VALUES($1, $2, 'viewer')
+         ON CONFLICT(username) DO NOTHING
          RETURNING username`,
-        [username, passwordHash, deviceId]
+        [username, passwordHash]
       );
       if (!created.rowCount) return reply(res, 409, { error: 'Username is already registered' });
 
@@ -1022,6 +1024,16 @@ async function handler(req, res, db = (activeDb || pool), env = process.env) {
         WHERE a.username = $1 AND a.can_read = TRUE
         ORDER BY r.timestamp DESC LIMIT 1`, [identity.sub]);
       return reply(res, 200, { reading: result.rows[0] || null });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/v1/devices') {
+      const identity = verifyToken(bearer(req), env.JWT_SECRET);
+      if (!identity) return reply(res, 401, { error: 'Bearer token required or expired' });
+      const result = await db.query(`SELECT d.device_id, d.name, d.created_at, d.last_seen_at
+        FROM devices d JOIN device_access a USING(device_id)
+        WHERE a.username = $1 AND a.can_read = TRUE
+        ORDER BY d.device_id`, [identity.sub]);
+      return reply(res, 200, { devices: result.rows });
     }
 
     const deviceRoute = /^\/api\/v1\/devices\/([^/]+)(?:\/readings)?$/.exec(url.pathname);

@@ -18,6 +18,7 @@ function Metric({ title, wash, tone, value, unit, caption, icon, device = false 
 export default function DashboardView({
   reading,
   readings,
+  deviceAssigned,
   connection,
   notice,
   metric,
@@ -33,7 +34,7 @@ export default function DashboardView({
   onRecalculate,
   onChangeStage,
 }) {
-  const device = devicePresentation(reading, connection);
+  const device = devicePresentation(reading, connection, deviceAssigned);
   const lux = reading && reading.luminosity_lux !== null && reading.luminosity_lux !== undefined
     ? Number(reading.luminosity_lux)
     : null;
@@ -42,7 +43,9 @@ export default function DashboardView({
     ? `Leitura direta via cabo USB às ${new Date().toLocaleTimeString('pt-BR')}`
     : reading
       ? `Sequência ${reading.sequence} · leitura em ${formatDate(reading.timestamp)} · último contato ${formatDate(reading.last_seen_at)}`
-      : 'Aguardando o primeiro envio do dispositivo.';
+      : deviceAssigned === false
+        ? 'Nenhum dispositivo foi associado a esta conta.'
+        : 'Aguardando o primeiro envio do dispositivo.';
 
   return (
     <main className="dashboard">

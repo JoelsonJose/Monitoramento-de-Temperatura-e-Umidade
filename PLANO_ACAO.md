@@ -5,7 +5,7 @@
 | Ordem | Item | Estado | Próxima confirmação |
 |---|---|---|---|
 | 1 | PWA: manifesto, ícones, service worker e cache da interface | Parcialmente concluído: build de produção e arquivos PWA foram verificados localmente; chamadas da API exigem internet | Confirmar instalação e abertura offline em um celular |
-| 2 | Cadastro e autenticador independente por usuário | Implementado localmente e coberto por testes: cadastro username/senha, QR TOTP exclusivo por usuário e códigos de recuperação | Publicar API/frontend; validar cadastro e login de uma segunda conta no ambiente publicado |
+| 2 | Cadastro, 2FA e isolamento de dados por usuário | Cadastro novo sem dispositivo associado; leituras/metadata filtradas por permissões; migração revoga concessões automáticas antigas da ESP32 principal | Publicar API/frontend; validar que `teste` mantém a ESP32 e uma conta nova vê painel vazio |
 
 ## Matriz de responsabilidades
 

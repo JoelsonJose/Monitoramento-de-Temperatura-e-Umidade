@@ -7,6 +7,7 @@ export function useDashboard(token, screen, onUnauthorized) {
   const [notice, setNotice] = useState(null);
   const [latest, setLatest] = useState(null);
   const [readings, setReadings] = useState([]);
+  const [deviceAssigned, setDeviceAssigned] = useState(null);
   const [lotes, setLotes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('todos');
@@ -51,12 +52,14 @@ export function useDashboard(token, screen, onUnauthorized) {
 
   const refresh = useCallback(async () => {
     try {
-      const [latestBody, historyBody] = await Promise.all([
+      const [latestBody, historyBody, devicesBody] = await Promise.all([
         api('/api/v1/readings/latest', { token }),
         api('/api/v1/readings?limit=50', { token }),
+        api('/api/v1/devices', { token }),
       ]);
       setLatest(latestBody.reading || null);
       setReadings(Array.isArray(historyBody.readings) ? [...historyBody.readings].reverse() : []);
+      setDeviceAssigned(Array.isArray(devicesBody.devices) && devicesBody.devices.length > 0);
       setConnection((current) => (current === 'usb' ? 'usb' : 'online'));
       setNotice(null);
     } catch (error) {
@@ -121,6 +124,7 @@ export function useDashboard(token, screen, onUnauthorized) {
 
   function showUsbReading(reading) {
     setConnection('usb');
+    setDeviceAssigned(true);
     setLatest({
       ...reading,
       device_id: reading.device_id || 'esp32c3-01',
@@ -139,6 +143,7 @@ export function useDashboard(token, screen, onUnauthorized) {
     notice,
     latest,
     readings,
+    deviceAssigned,
     lotes: visible,
     allLotes: lotes,
     counts: countBySeal(lotes),

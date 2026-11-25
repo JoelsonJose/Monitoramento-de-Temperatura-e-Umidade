@@ -2,13 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiServer } from '../server.js';
 import { generateTotp } from './totp.js';
+import { signToken } from '../security.js';
 
 function authDb() {
-  const users = new Map();
+  const users = new Map([
+    ['teste', { username: 'teste', role: 'admin', password_hash: null, otp_enabled: true }]
+  ]);
+  const deviceAccess = new Map([['teste', new Set(['esp32c3-01'])]]);
+  const reading = {
+    device_id: 'esp32c3-01', sequence: 42, temperature_c: 29.5,
+    humidity_percent: 68, timestamp: '2026-11-25T12:00:00Z',
+    last_seen_at: '2026-11-25T12:00:00Z'
+  };
   return {
     users,
+    deviceAccess,
     async query(sql, params = []) {
-      if (sql.includes('WITH new_user AS')) {
+      if (sql.includes('INSERT INTO users(username, password_hash, role)')) {
         const [username, passwordHash] = params;
         if (users.has(username)) return { rowCount: 0, rows: [] };
         users.set(username, {
@@ -21,6 +31,26 @@ function authDb() {
           recovery_codes_hash: []
         });
         return { rowCount: 1, rows: [{ username }] };
+      }
+      if (sql.includes('SELECT d.device_id') && sql.includes('FROM devices d JOIN device_access')) {
+        const [username, deviceId] = params;
+        const assigned = deviceAccess.get(username) || new Set();
+        const devices = [...assigned]
+          .filter(id => !deviceId || id === deviceId)
+          .map(id => ({ device_id: id, name: 'ESP32 principal' }));
+        return { rowCount: devices.length, rows: devices };
+      }
+      if (sql.includes('FROM readings r') && sql.includes('JOIN devices d USING(device_id)')) {
+        const assigned = deviceAccess.get(params[0]) || new Set();
+        return assigned.has(reading.device_id)
+          ? { rowCount: 1, rows: [reading] }
+          : { rowCount: 0, rows: [] };
+      }
+      if (sql.includes('FROM readings r JOIN device_access')) {
+        const username = params[params.length - 1];
+        const assigned = deviceAccess.get(username) || new Set();
+        const rows = assigned.has(reading.device_id) ? [reading] : [];
+        return { rowCount: rows.length, rows };
       }
       if (sql.includes('SELECT username, password_hash, otp_enabled')) {
         const user = users.get(params[0]);
@@ -91,6 +121,7 @@ test('registration creates a viewer with its own TOTP enrollment and password', 
   assert.equal(registration.setup_required, true);
   assert.equal(db.users.get('alice.team').role, 'viewer');
   assert.match(db.users.get('alice.team').password_hash, /^scrypt\$/);
+  assert.equal(db.deviceAccess.has('alice.team'), false, 'new users are not linked to the demo device');
 
   const duplicate = await register(base, 'alice.team', password);
   assert.equal(duplicate.status, 409);
@@ -140,6 +171,27 @@ test('registration creates a viewer with its own TOTP enrollment and password', 
   const challenge = await login.json();
   assert.equal(challenge.otp_required, true);
   assert.ok(challenge.challenge_token);
+
+  const aliceToken = signToken('alice.team', 'test-secret-at-least-32-characters');
+  const aliceHeaders = { authorization: `Bearer ${aliceToken}` };
+  const aliceLatest = await fetch(`${base}/api/v1/readings/latest`, { headers: aliceHeaders });
+  assert.deepEqual((await aliceLatest.json()).reading, null);
+  const aliceHistory = await fetch(`${base}/api/v1/readings?limit=50`, { headers: aliceHeaders });
+  assert.deepEqual((await aliceHistory.json()).readings, []);
+  const aliceDevices = await fetch(`${base}/api/v1/devices`, { headers: aliceHeaders });
+  assert.deepEqual((await aliceDevices.json()).devices, []);
+  const deniedDevice = await fetch(`${base}/api/v1/devices/esp32c3-01`, { headers: aliceHeaders });
+  assert.equal(deniedDevice.status, 403);
+
+  const testeToken = signToken('teste', 'test-secret-at-least-32-characters');
+  const testeLatest = await fetch(`${base}/api/v1/readings/latest`, {
+    headers: { authorization: `Bearer ${testeToken}` }
+  });
+  assert.equal((await testeLatest.json()).reading.device_id, 'esp32c3-01');
+  const testeDevices = await fetch(`${base}/api/v1/devices`, {
+    headers: { authorization: `Bearer ${testeToken}` }
+  });
+  assert.deepEqual((await testeDevices.json()).devices.map(device => device.device_id), ['esp32c3-01']);
 });
 
 test('registration validates username and minimum password length', async t => {

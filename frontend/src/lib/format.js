@@ -102,7 +102,10 @@ export function sealTone(status) {
   };
 }
 
-export function devicePresentation(reading, connection) {
+export function devicePresentation(reading, connection, deviceAssigned = null) {
+  if (!reading && deviceAssigned === false) {
+    return { status: 'Sem dispositivo', caption: 'Nenhuma ESP32 associada a esta conta' };
+  }
   if (connection === 'offline' && !reading) {
     return { status: 'Sem resposta da API', caption: 'ESP32-C3 · Plug & Play' };
   }

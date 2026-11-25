@@ -109,6 +109,31 @@ export async function migrate(db, { demoUser, demoDeviceId }) {
       DO UPDATE SET is_owner = TRUE
     `, [demoUser, demoDeviceId]);
 
+    // Revoga uma única vez os acessos de leitura que o cadastro antigo concedia
+    // automaticamente à ESP32 principal. A partir daqui, só o usuário configurado
+    // como dono mantém acesso; novas contas precisam receber uma associação explícita.
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS app_migrations (
+        migration_key TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    const isolationMigration = '20261125_isolate_demo_device_access';
+    const applied = await db.query(
+      'SELECT 1 FROM app_migrations WHERE migration_key = $1',
+      [isolationMigration]
+    );
+    if (!applied.rowCount) {
+      await db.query(
+        'DELETE FROM device_access WHERE device_id = $1 AND username <> $2',
+        [demoDeviceId, demoUser]
+      );
+      await db.query(
+        'INSERT INTO app_migrations(migration_key) VALUES($1) ON CONFLICT DO NOTHING',
+        [isolationMigration]
+      );
+    }
+
     // Seed de lotes com regra das duas etapas
     await db.query(`
       INSERT INTO lotes (id_lote, codigo_lote, nome, variedade, device_id, etapa_atual, data_inicio, data_colheita, data_fim, percentual_pomar, percentual_estoque, percentual_conformidade, status_selo)
