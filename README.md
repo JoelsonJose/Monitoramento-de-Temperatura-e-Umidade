@@ -33,7 +33,7 @@ The firmware logs Wi-Fi start, association, IP assignment, and disconnect reason
 
 ## API and dashboard
 
-The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. This is a browser dashboard, separate from the ESP32's status page at `http://<ESP32_IP>/`. It now displays the latest device contact time.
+The local API uses Node.js 22 and PostgreSQL. Copy `.env.example` to `.env`, replace every example secret, then run `docker compose up --build`. The API listens on port 3000; `/health` checks the service and database. The dashboard is a React PWA served at `http://<API_BIND_ADDRESS>:3000/` (use `localhost` when the bind address is `127.0.0.1`); sign in with the local `DEMO_USER` and `DEMO_PASSWORD` from `.env`. For interface work without rebuilding the API image, run `npm run dev` inside `frontend/` while the API is on port 3000. To refresh the files the API serves, run `npm run build` in `frontend/`. This browser app is separate from the ESP32 status page at `http://<ESP32_IP>/`. It can be installed from the browser and shows the latest device contact time.
 
 ## Computação em Nuvem e DevOps (Entrega 2ª Unidade)
 
@@ -136,7 +136,8 @@ Test plan and observed F1/F3 results: [`docs/plano_testes.md`](docs/plano_testes
 ## Repository guide
 
 - `monitoramento.ino` — ESP32-C3 firmware
-- `backend/` — REST API and browser dashboard
+- `frontend/` — React PWA (Vite, Radix UI, service worker)
+- `backend/` — REST API that serves the built PWA
 - `database/init.sql` — PostgreSQL schema
 - `docs/` — architecture, API, and security notes
 - `docs/diagrama_eletrico.svg` — ESP32-C3 and DHT11 wiring
