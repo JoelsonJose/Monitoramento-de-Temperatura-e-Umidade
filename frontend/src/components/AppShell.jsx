@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import Brand from './Brand.jsx';
+import ChatWidget from './ChatWidget.jsx';
 import DashboardView from './DashboardView.jsx';
 import InstallButton from './InstallButton.jsx';
 import LotesView from './LotesView.jsx';
@@ -86,6 +87,7 @@ export default function AppShell({ token, onLogout }) {
           onNotice={notify}
         />
       </Tabs.Content>
+      <ChatWidget token={token} />
     </Tabs.Root>
   );
 }
