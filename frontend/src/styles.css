@@ -1,0 +1,29 @@
+:root {
+  color-scheme: light;
+  --ink: #16352e;
+  --muted: #74847b;
+  --paper: #f6f8f1;
+  --white: #fff;
+  --green: #236c4a;
+  --green-dark: #194e38;
+  --green-soft: #e7f1e9;
+  --mango: #f2a51a;
+  --mango-dark: #cf8a0d;
+  --line: #e8ece4;
+  --red: #b33d35;
+  --red-pale: #fff0ed;
+  --shadow: 0 18px 50px #183c2c12;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin-top: 0; }
+.boot { min-height: 100vh; display: grid; place-items: center; align-content: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 11px; color: var(--ink); font-weight: 800; letter-spacing: -0.04em; }
+.brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: #e7f1e9; color: var(--green); }
+.brand-mark svg { width: 25px; height: 25px; }
+.brand-name { font-size: 19px; }
+.brand-name span { color: var(--green); }
