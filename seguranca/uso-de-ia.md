@@ -32,3 +32,15 @@ Em conformidade com as diretrizes do Projeto Integrador (Seção 8 do documento 
 
 5. **Responsabilidade Técnica:**
    - Todos os integrantes da equipe estudaram o funcionamento dos módulos desenvolvidos, revisaram os arquivos de teste e estão preparados para explicar as decisões de arquitetura e executar as alterações ao vivo solicitadas pelo professor durante a banca de avaliação.
+
+---
+
+## 🥭 Assistente de IA do produto (chatbot de agronomia da manga)
+
+Além do uso de IA como apoio ao desenvolvimento (seções acima), o **produto** passou a ter um assistente de IA em tempo de execução.
+
+- **Uso no produto:** `POST /api/v1/chat` (`backend/src/chat/agronomia-chat.js`) envia a conversa a um modelo de linguagem (API Google Gemini, camada gratuita do Google AI Studio; modelo configurável em `AI_MODEL`) com um prompt de sistema restrito a agronomia da manga.
+- **Ferramenta de apoio ao desenvolvimento deste recurso:** Claude Code (Anthropic), usado para escrever o primeiro rascunho do módulo, da interface e dos testes.
+- **Privacidade:** na camada gratuita do Gemini o Google pode usar o conteúdo das conversas para melhorar seus produtos; por isso o chat não deve receber dados pessoais nem credenciais (o aviso está no rodapé da janela).
+- **Controles de segurança:** chave `AI_API_KEY` apenas no servidor (`.env` ignorado pelo Git / variável de ambiente no Render), nunca enviada ao navegador nem a respostas de erro ou logs; rota protegida por token JWT; limite de 10 perguntas por minuto por usuário; validação de tamanho e formato das mensagens; resposta exibida no navegador com `textContent` (sem interpretar HTML).
+- **O que a equipe deve conferir antes da banca:** ler `agronomia-chat.js` e `index.html` (bloco "Assistente de IA"), rodar `npm test` em `backend/`, testar o chat com uma chave própria e saber explicar por que a chave não pode ficar no front-end.
